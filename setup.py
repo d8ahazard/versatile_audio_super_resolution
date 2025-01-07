@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 # python3 setup.py sdist bdist_wheel
 """
-@File    :   setup.py.py    
+@File    :   setup.py
 @Contact :   haoheliu@gmail.com
 @License :   (C)Copyright 2020-2100
 
@@ -25,37 +25,39 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = "audiosr"
+NAME = "audiosr_next"
 DESCRIPTION = "This package is written for text-to-audio/music generation."
 URL = "https://github.com/haoheliu/audiosr"
 EMAIL = "haoheliu@gmail.com"
 AUTHOR = "Haohe Liu"
-REQUIRES_PYTHON = ">=3.7.0"
-VERSION = "0.0.7"
+REQUIRES_PYTHON = ">=3.9.0"
+VERSION = "0.0.8"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "torch>=1.13.0",
-    "torchaudio>=0.13.0",
-    "torchvision>=0.14.0",
-    "tqdm",
-    "gradio",
-    "pyyaml",
-    "einops",
     "chardet",
-    "numpy<=1.23.5",
-    "soundfile",
-    "librosa==0.9.2",
-    "scipy",
-    "pandas",
-    "unidecode",
-    "phonemizer",
-    "torchlibrosa>=0.0.9",
-    "transformers==4.30.2",
-    "huggingface_hub",
-    "progressbar",
+    "cog",
+    "einops",
     "ftfy",
+    "gradio",
+    "huggingface_hub",
+    "librosa",
+    "numpy<=1.23.5",
+    "pandas",
+    "phonemizer",
+    "progressbar",
+    "pyloudnorm",
+    "pyyaml",
+    "scipy",
+    "soundfile",
     "timm",
+    "torch==2.5.0",
+    "torchaudio==2.5.0",
+    "torchlibrosa>=0.0.9",
+    "torchvision==0.20.0",
+    "tqdm",
+    "transformers>=4.30.2",
+    "unidecode",
 ]
 
 # What packages are optional?

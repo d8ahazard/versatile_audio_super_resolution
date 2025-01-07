@@ -8,7 +8,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_sco
 try:
     import horovod.torch as hvd
 except ImportError:
-    hvd = None
+    pass
 
 
 def gather_features(

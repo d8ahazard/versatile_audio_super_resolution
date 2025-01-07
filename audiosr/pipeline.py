@@ -1,14 +1,12 @@
-import os
 import re
 
-import yaml
 import torch
+from torch.backends import cudnn, mps
 import torchaudio
-import numpy as np
+import yaml
 
 import audiosr.latent_diffusion.modules.phoneme_encoder.text as text
 from audiosr.latent_diffusion.models.ddpm import LatentDiffusion
-from audiosr.latent_diffusion.util import get_vits_phoneme_ids_no_padding
 from audiosr.utils import (
     default_audioldm_config,
     download_checkpoint,
@@ -16,7 +14,6 @@ from audiosr.utils import (
     lowpass_filtering_prepare_inference,
     wav_feature_extraction,
 )
-import os
 
 
 def seed_everything(seed):
@@ -111,7 +108,7 @@ def round_up_duration(duration):
     return int(round(duration / 2.5) + 1) * 2.5
 
 
-def build_model(ckpt_path=None, config=None, device=None, model_name="basic"):
+def build_model(config=None, device=None, model_name="basic"):
     if device is None or device == "auto":
         if torch.cuda.is_available():
             device = torch.device("cuda:0")
@@ -129,7 +126,7 @@ def build_model(ckpt_path=None, config=None, device=None, model_name="basic"):
         assert type(config) is str
         config = yaml.load(open(config, "r"), Loader=yaml.FullLoader)
     else:
-        config = default_audioldm_config(model_name)
+        config = default_audioldm_config()
 
     # # Use text as condition instead of using waveform during training
     config["model"]["params"]["device"] = device

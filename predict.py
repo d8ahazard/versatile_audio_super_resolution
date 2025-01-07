@@ -11,7 +11,15 @@ from audiosr import build_model, super_resolution
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 torch.set_float32_matmul_precision("high")
 
+
 class Predictor(BasePredictor):
+    def __init__(self):
+        super().__init__()
+        self.model_name = None
+        self.device = None
+        self.sr = None
+        self.audiosr = None
+
     def setup(self, model_name="basic", device="auto"):
         self.model_name = model_name
         self.device = device
@@ -19,14 +27,15 @@ class Predictor(BasePredictor):
         self.audiosr = build_model(model_name=self.model_name, device=self.device)
 
     def predict(self,
-        input_file: Path = Input(description="Audio to upsample"),
-        ddim_steps: int = Input(description="Number of inference steps", default=50, ge=10, le=500),
-        guidance_scale: float = Input(description="Scale for classifier free guidance", default=3.5, ge=1.0, le=20.0),
-        seed: int = Input(description="Random seed. Leave blank to randomize the seed", default=None)
-    ) -> Path:
+                input_file: Path = Input(description="Audio to upsample"),
+                ddim_steps: int = Input(description="Number of inference steps", default=50, ge=10, le=500),
+                guidance_scale: float = Input(description="Scale for classifier free guidance", default=3.5, ge=1.0,
+                                              le=20.0),
+                seed: int = Input(description="Random seed. Leave blank to randomize the seed", default=None)
+                ) -> Path:
         """Run a single prediction on the model"""
         if seed is None:
-            seed = random.randint(0, 2**32 - 1)
+            seed = random.randint(0, 2 ** 32 - 1)
             print(f"Setting seed to: {seed}")
 
         waveform = super_resolution(

@@ -1,17 +1,14 @@
-from typing import Iterator, List, Optional, Union
-from collections import Counter
 import logging
-from operator import itemgetter
 import random
+from collections import Counter
+from operator import itemgetter
+from typing import Iterator, List, Optional, Union
+from torch.utils.data import Dataset, Sampler
 
 import numpy as np
-
 from torch.utils.data import DistributedSampler
-from torch.utils.data.sampler import Sampler
 
 LOGGER = logging.getLogger(__name__)
-
-from torch.utils.data import Dataset, Sampler
 
 
 class DatasetFromSampler(Dataset):
@@ -215,11 +212,11 @@ class BatchBalanceClassSampler(Sampler):
     """
 
     def __init__(
-        self,
-        labels: Union[List[int], np.ndarray],
-        num_classes: int,
-        num_samples: int,
-        num_batches: int = None,
+            self,
+            labels: Union[List[int], np.ndarray],
+            num_classes: int,
+            num_samples: int,
+            num_batches: int = None,
     ):
         """Sampler initialisation."""
         super().__init__(labels)
@@ -308,33 +305,33 @@ class DynamicBalanceClassSampler(Sampler):
 
     Examples:
 
-        >>> import torch
-        >>> import numpy as np
-
-        >>> from catalyst.data import DynamicBalanceClassSampler
-        >>> from torch.utils import data
-
-        >>> features = torch.Tensor(np.random.random((200, 100)))
-        >>> labels = np.random.randint(0, 4, size=(200,))
-        >>> sampler = DynamicBalanceClassSampler(labels)
-        >>> labels = torch.LongTensor(labels)
-        >>> dataset = data.TensorDataset(features, labels)
-        >>> loader = data.dataloader.DataLoader(dataset, batch_size=8)
-
-        >>> for batch in loader:
-        >>>     b_features, b_labels = batch
+        # >>> import torch
+        # >>> import numpy as np
+        #
+        # >>> from catalyst.data import DynamicBalanceClassSampler
+        # >>> from torch.utils import data
+        #
+        # >>> features = torch.Tensor(np.random.random((200, 100)))
+        # >>> labels = np.random.randint(0, 4, size=(200,))
+        # >>> sampler = DynamicBalanceClassSampler(labels)
+        # >>> labels = torch.LongTensor(labels)
+        # >>> dataset = data.TensorDataset(features, labels)
+        # >>> loader = data.dataloader.DataLoader(dataset, batch_size=8)
+        #
+        # >>> for batch in loader:
+        # >>>     b_features, b_labels = batch
 
     Sampler was inspired by https://arxiv.org/abs/1901.06783
     """
 
     def __init__(
-        self,
-        labels: List[Union[int, str]],
-        exp_lambda: float = 0.9,
-        start_epoch: int = 0,
-        max_d: Optional[int] = None,
-        mode: Union[str, int] = "downsampling",
-        ignore_warning: bool = False,
+            self,
+            labels: List[Union[int, str]],
+            exp_lambda: float = 0.9,
+            start_epoch: int = 0,
+            max_d: Optional[int] = None,
+            mode: Union[str, int] = "downsampling",
+            ignore_warning: bool = False,
     ):
         """
         Args:
@@ -345,7 +342,7 @@ class DynamicBalanceClassSampler(Sampler):
             max_d: if not None, limit on the difference between the most
             frequent and the rarest classes, heuristic
             mode: number of samples per class in the end of training. Must be
-            "downsampling" or number. Before change it, make sure that you
+            "downsampling" or number. Before changing it, make sure that you
             understand how does it work
             ignore_warning: ignore warning about min class size
         """
@@ -400,7 +397,7 @@ class DynamicBalanceClassSampler(Sampler):
         self.epoch += 1
 
     def _exp_scheduler(self) -> float:
-        return self.exp_lambda**self.epoch
+        return self.exp_lambda ** self.epoch
 
     def __iter__(self) -> Iterator[int]:
         """
@@ -444,18 +441,18 @@ class MiniEpochSampler(Sampler):
           > None -- don't shuffle
 
     Example:
-        >>> MiniEpochSampler(len(dataset), mini_epoch_len=100)
-        >>> MiniEpochSampler(len(dataset), mini_epoch_len=100, drop_last=True)
-        >>> MiniEpochSampler(len(dataset), mini_epoch_len=100,
-        >>>     shuffle="per_epoch")
+        # >>> MiniEpochSampler(len(dataset), mini_epoch_len=100)
+        # >>> MiniEpochSampler(len(dataset), mini_epoch_len=100, drop_last=True)
+        # >>> MiniEpochSampler(len(dataset), mini_epoch_len=100,
+        # >>>     shuffle="per_epoch")
     """
 
     def __init__(
-        self,
-        data_len: int,
-        mini_epoch_len: int,
-        drop_last: bool = False,
-        shuffle: str = None,
+            self,
+            data_len: int,
+            mini_epoch_len: int,
+            drop_last: bool = False,
+            shuffle: str = None,
     ):
         """Sampler initialisation."""
         super().__init__(None)
@@ -488,7 +485,7 @@ class MiniEpochSampler(Sampler):
     def shuffle(self) -> None:
         """Shuffle sampler indices."""
         if self.shuffle_type == "per_mini_epoch" or (
-            self.shuffle_type == "per_epoch" and self.state_i == 0
+                self.shuffle_type == "per_epoch" and self.state_i == 0
         ):
             if self.data_len >= self.mini_epoch_len:
                 self.indices = self._indices
@@ -542,11 +539,11 @@ class DistributedSamplerWrapper(DistributedSampler):
     """
 
     def __init__(
-        self,
-        sampler,
-        num_replicas: Optional[int] = None,
-        rank: Optional[int] = None,
-        shuffle: bool = True,
+            self,
+            sampler,
+            num_replicas: Optional[int] = None,
+            rank: Optional[int] = None,
+            shuffle: bool = True,
     ):
         """
 

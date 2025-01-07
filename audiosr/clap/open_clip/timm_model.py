@@ -5,14 +5,15 @@ Wraps timm (https://github.com/rwightman/pytorch-image-models) models for use as
 from collections import OrderedDict
 
 import torch.nn as nn
+from timm.layers import to_2tuple, RotAttentionPool2d, AttentionPool2d, Mlp
 
 try:
     import timm
-    from timm.models.layers import Mlp, to_2tuple
-    from timm.models.layers.attention_pool2d import RotAttentionPool2d
-    from timm.models.layers.attention_pool2d import (
-        AttentionPool2d as AbsAttentionPool2d,
-    )
+    # from timm.layers import Mlp, to_2tuple
+    # from timm.layers.attention_pool2d import RotAttentionPool2d
+    # from timm.layers.attention_pool2d import (
+    #     AttentionPool2d as AbsAttentionPool2d,
+    # )
 except ImportError:
     timm = None
 
@@ -54,7 +55,7 @@ class TimmModel(nn.Module):
 
         head_layers = OrderedDict()
         if pool == "abs_attn":
-            head_layers["pool"] = AbsAttentionPool2d(
+            head_layers["pool"] = AttentionPool2d(
                 prev_chs, feat_size=feat_size, out_features=embed_dim
             )
             prev_chs = embed_dim

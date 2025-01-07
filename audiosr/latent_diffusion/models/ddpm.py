@@ -414,8 +414,7 @@ class DDPM(nn.Module):
 
     @torch.no_grad()
     def sample(self, batch_size=16, return_intermediates=False):
-        shape = (batch_size, channels, self.latent_t_size, self.latent_f_size)
-        self.channels
+        shape = (batch_size, self.channels, self.latent_t_size, self.latent_f_size)
         return self.p_sample_loop(shape, return_intermediates=return_intermediates)
 
     def q_sample(self, x_start, t, noise=None):

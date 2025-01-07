@@ -17,6 +17,18 @@ class PLMSSampler(object):
         self.model = model
         self.ddpm_num_timesteps = model.num_timesteps
         self.schedule = schedule
+        self.kwargs = kwargs
+        self.alphas_cumprod = model.alphas_cumprod
+        self.alphas_cumprod_prev = model.alphas_cumprod_prev
+        self.betas = model.betas
+        self.ddim_timesteps = None
+        self.ddim_sigmas = None
+        self.ddim_alphas = None
+        self.ddim_alphas_prev = None
+        self.ddim_sigmas_for_original_num_steps = None
+        self.sqrt_alphas_cumprod = None
+        self.sqrt_one_minus_alphas_cumprod = None
+        self.ddim_sqrt_one_minus_alphas = None
 
     def register_buffer(self, name, attr):
         if type(attr) == torch.Tensor:
@@ -96,7 +108,6 @@ class PLMSSampler(object):
         shape,
         conditioning=None,
         callback=None,
-        normals_sequence=None,
         img_callback=None,
         quantize_x0=False,
         eta=0.0,

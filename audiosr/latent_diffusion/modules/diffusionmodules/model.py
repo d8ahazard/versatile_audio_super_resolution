@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import numpy as np
+from diffusers.models.autoencoders.vae import DiagonalGaussianDistribution
 from einops import rearrange
 
 from audiosr.latent_diffusion.util import instantiate_from_config

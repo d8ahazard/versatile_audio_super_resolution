@@ -1,16 +1,24 @@
---extra-index-url https://download.pytorch.org/whl/cu118
-git+https://github.com/huggingface/diffusers.git
-torch==2.0.1+cu118; sys_platform != 'darwin'
-torch==2.0.1; sys_platform == 'darwin'
-torchvision==0.15.2+cu118; sys_platform != 'darwin'
-torchvision==0.15.2; sys_platform == 'darwin'
-torchaudio==2.0.2+cu118; sys_platform != 'darwin'
-torchaudio==2.0.2; sys_platform == 'darwin'
-huggingface_hub
-transformers==4.30.2
+--extra-index-url https://download.pytorch.org/whl/cu121
+chardet
+cog
+einops
+ftfy
 gradio
-soundfile
-progressbar
+huggingface_hub
 librosa
-audiosr
+numpy<=1.23.5
+pandas
+phonemizer
+progressbar
+pyloudnorm
+pyyaml
+scipy
+soundfile
+timm
+torch==2.5.0
+torchaudio==2.5.0
+torchlibrosa>=0.0.9
+torchvision==0.20.0
+tqdm
+transformers>=4.30.2
 unidecode

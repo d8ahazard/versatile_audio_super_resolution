@@ -2,16 +2,14 @@
 # Email: haoheliu@gmail.com
 # Date: 11 Feb 2023
 
-import os
 import json
 
+import matplotlib
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-import matplotlib
-from scipy.io import wavfile
 from matplotlib import pyplot as plt
-
+from scipy.io import wavfile
 
 matplotlib.use("Agg")
 
@@ -88,6 +86,7 @@ def get_restore_step(path):
         return checkpoints[np.argmax(steps)], np.max(steps)
     else:
         steps = []
+        fname = None
         for x in checkpoints:
             if "last" in x:
                 if "-v" not in x:
@@ -370,11 +369,11 @@ def synth_one_sample_val(
             (mel_target.cpu().numpy(), pitch, energy),
         ],
         stats,
-        [
-            "Raw mel spectrogram prediction",
-            "Postnet mel prediction",
-            "Ground-Truth Spectrogram",
-        ],
+        # [
+        #     "Raw mel spectrogram prediction",
+        #     "Postnet mel prediction",
+        #     "Ground-Truth Spectrogram",
+        # ],
     )
 
     if vocoder is not None:
@@ -384,13 +383,13 @@ def synth_one_sample_val(
             mel_target.unsqueeze(0),
             vocoder,
             model_config,
-            preprocess_config,
+            #preprocess_config,
         )[0]
         wav_prediction = vocoder_infer(
             postnet_mel_prediction.unsqueeze(0),
             vocoder,
             model_config,
-            preprocess_config,
+            #preprocess_config,
         )[0]
     else:
         wav_reconstruction = wav_prediction = None
@@ -450,7 +449,7 @@ def synth_samples(targets, predictions, vocoder, model_config, preprocess_config
                 (mel_prediction.cpu().numpy(), pitch, energy),
             ],
             stats,
-            ["Synthetized Spectrogram by PostNet"],
+            #["Synthetized Spectrogram by PostNet"],
         )
         # np.save("{}_postnet.npy".format(basename), mel_prediction.cpu().numpy())
         plt.savefig(os.path.join(path, "{}_postnet_2.png".format(basename)))
@@ -532,7 +531,7 @@ def pad(input_ele, mel_max_length=None):
             one_batch_padded = F.pad(
                 batch, (0, max_len - batch.size(0)), "constant", 0.0
             )
-        elif len(batch.shape) == 2:
+        else:
             one_batch_padded = F.pad(
                 batch, (0, 0, 0, max_len - batch.size(0)), "constant", 0.0
             )

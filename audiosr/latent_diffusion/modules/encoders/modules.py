@@ -1,19 +1,18 @@
-import torch
 import logging
+
+import numpy as np
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torchaudio
+from transformers import AutoTokenizer, T5Config
+from transformers import RobertaTokenizer, T5EncoderModel
+
 from audiosr.clap.open_clip import create_model
 from audiosr.clap.training.data import get_audio_features
-import torchaudio
-from transformers import RobertaTokenizer, AutoTokenizer, T5EncoderModel
-import torch.nn.functional as F
 from audiosr.latent_diffusion.modules.audiomae.AudioMAE import Vanilla_AudioMAE
 from audiosr.latent_diffusion.modules.phoneme_encoder.encoder import TextEncoder
 from audiosr.latent_diffusion.util import instantiate_from_config
-
-from transformers import AutoTokenizer, T5Config
-
-
-import numpy as np
 
 """
 The model forward function can return three types of data:
@@ -137,7 +136,7 @@ class VAEFeatureExtract(nn.Module):
         self.vae.train = disabled_train
 
     def forward(self, batch):
-        assert self.vae.training == False
+        assert self.vae.training is False
         if self.device is None:
             self.device = next(self.vae.parameters()).device
 
@@ -158,7 +157,7 @@ class FlanT5HiddenState(nn.Module):
     """
 
     def __init__(
-        self, text_encoder_name="google/flan-t5-large", freeze_text_encoder=True
+            self, text_encoder_name="google/flan-t5-large", freeze_text_encoder=True
     ):
         super().__init__()
         self.freeze_text_encoder = freeze_text_encoder
@@ -175,18 +174,18 @@ class FlanT5HiddenState(nn.Module):
         self.device = None
 
     # Required
-    def get_unconditional_condition(self, batchsize):
+    def get_unconditional_condition(self, batch_size):
         param = next(self.model.parameters())
         if self.freeze_text_encoder:
-            assert param.requires_grad == False
+            assert param.requires_grad is False
 
         # device = param.device
         if self.empty_hidden_state_cfg is None:
             self.empty_hidden_state_cfg, _ = self([""])
 
-        hidden_state = torch.cat([self.empty_hidden_state_cfg] * batchsize).float()
+        hidden_state = torch.cat([self.empty_hidden_state_cfg] * batch_size).float()
         attention_mask = (
-            torch.ones((batchsize, hidden_state.size(1)))
+            torch.ones((batch_size, hidden_state.size(1)))
             .to(hidden_state.device)
             .float()
         )
@@ -195,7 +194,7 @@ class FlanT5HiddenState(nn.Module):
     def forward(self, batch):
         param = next(self.model.parameters())
         if self.freeze_text_encoder:
-            assert param.requires_grad == False
+            assert param.requires_grad is False
 
         if self.device is None:
             self.device = param.device
@@ -247,48 +246,50 @@ class AudioMAEConditionCTPoolRandTFSeparated(nn.Module):
     """
 
     def __init__(
-        self,
-        time_pooling_factors=[1, 2, 4, 8],
-        freq_pooling_factors=[1, 2, 4, 8],
-        eval_time_pooling=None,
-        eval_freq_pooling=None,
-        mask_ratio=0.0,
-        regularization=False,
-        no_audiomae_mask=True,
-        no_audiomae_average=False,
+            self,
+            time_pooling_factors=None,
+            freq_pooling_factors=None,
+            eval_time_pooling=None,
+            eval_freq_pooling=None,
+            mask_ratio=0.0,
+            regularization=False,
+            no_audiomae_mask=True,
+            no_audiomae_average=False,
     ):
         super().__init__()
+        if freq_pooling_factors is None:
+            freq_pooling_factors = [1, 2, 4, 8]
+        if time_pooling_factors is None:
+            time_pooling_factors = [1, 2, 4, 8]
         self.device = None
         self.time_pooling_factors = time_pooling_factors
         self.freq_pooling_factors = freq_pooling_factors
-        self.no_audiomae_mask = no_audiomae_mask
-        self.no_audiomae_average = no_audiomae_average
+        self.no_audio_mae_mask = no_audiomae_mask
+        self.no_audio_mae_average = no_audiomae_average
 
         self.eval_freq_pooling = eval_freq_pooling
         self.eval_time_pooling = eval_time_pooling
         self.mask_ratio = mask_ratio
         self.use_reg = regularization
-
-        self.audiomae = Vanilla_AudioMAE()
-        self.audiomae.eval()
-        for p in self.audiomae.parameters():
+        self.avg_pooling = None
+        self.max_pooling = None
+        self.audio_mae = Vanilla_AudioMAE()
+        self.audio_mae.eval()
+        for p in self.audio_mae.parameters():
             p.requires_grad = False
 
     # Required
-    def get_unconditional_condition(self, batchsize):
-        param = next(self.audiomae.parameters())
-        assert param.requires_grad == False
+    def get_unconditional_condition(self, batch_size):
+        param = next(self.audio_mae.parameters())
+        assert param.requires_grad is False
         device = param.device
-        # time_pool, freq_pool = max(self.time_pooling_factors), max(self.freq_pooling_factors)
         time_pool, freq_pool = min(self.eval_time_pooling, 64), min(
             self.eval_freq_pooling, 8
         )
-        # time_pool = self.time_pooling_factors[np.random.choice(list(range(len(self.time_pooling_factors))))]
-        # freq_pool = self.freq_pooling_factors[np.random.choice(list(range(len(self.freq_pooling_factors))))]
         token_num = int(512 / (time_pool * freq_pool))
         return [
-            torch.zeros((batchsize, token_num, 768)).to(device).float(),
-            torch.ones((batchsize, token_num)).to(device).float(),
+            torch.zeros((batch_size, token_num, 768)).to(device).float(),
+            torch.ones((batch_size, token_num)).to(device).float(),
         ]
 
     def pool(self, representation, time_pool=None, freq_pool=None):
@@ -311,26 +312,28 @@ class AudioMAEConditionCTPoolRandTFSeparated(nn.Module):
                         np.random.choice(list(range(len(self.freq_pooling_factors))))
                     ],
                 )
-                # freq_pool = min(8, time_pool) # TODO here I make some modification.
+
         else:
             time_pool, freq_pool = min(self.eval_time_pooling, 64), min(
                 self.eval_freq_pooling, 8
             )
 
-        self.avgpooling = nn.AvgPool2d(
+        self.avg_pooling = nn.AvgPool2d(
             kernel_size=(time_pool, freq_pool), stride=(time_pool, freq_pool)
         )
-        self.maxpooling = nn.MaxPool2d(
+        self.max_pooling = nn.MaxPool2d(
             kernel_size=(time_pool, freq_pool), stride=(time_pool, freq_pool)
         )
 
         pooled = (
-            self.avgpooling(representation) + self.maxpooling(representation)
-        ) / 2  # [bs, embedding_dim, time_token_num, freq_token_num]
+
+                         self.avg_pooling(representation) + self.max_pooling(representation)
+                 ) / 2  # [bs, embedding_dim, time_token_num, freq_token_num]
         pooled = pooled.flatten(2).transpose(1, 2)
         return pooled  # [bs, token_num, embedding_dim]
 
-    def regularization(self, x):
+    @staticmethod
+    def regularization(x):
         assert x.size(-1) == 768
         x = F.normalize(x, p=2, dim=-1)
         return x
@@ -344,11 +347,11 @@ class AudioMAEConditionCTPoolRandTFSeparated(nn.Module):
 
         batch = batch.unsqueeze(1)
         with torch.no_grad():
-            representation = self.audiomae(
+            representation = self.audio_mae(
                 batch,
                 mask_ratio=self.mask_ratio,
-                no_mask=self.no_audiomae_mask,
-                no_average=self.no_audiomae_average,
+                no_mask=self.no_audio_mae_mask,
+                no_average=self.no_audio_mae_average,
             )
             representation = self.pool(representation, time_pool, freq_pool)
             if self.use_reg:
@@ -371,48 +374,51 @@ class AudioMAEConditionCTPoolRand(nn.Module):
     """
 
     def __init__(
-        self,
-        time_pooling_factors=[1, 2, 4, 8],
-        freq_pooling_factors=[1, 2, 4, 8],
-        eval_time_pooling=None,
-        eval_freq_pooling=None,
-        mask_ratio=0.0,
-        regularization=False,
-        no_audiomae_mask=True,
-        no_audiomae_average=False,
+            self,
+            time_pooling_factors=None,
+            freq_pooling_factors=None,
+            eval_time_pooling=None,
+            eval_freq_pooling=None,
+            mask_ratio=0.0,
+            regularization=False,
+            no_audiomae_mask=True,
+            no_audiomae_average=False,
     ):
         super().__init__()
+        if freq_pooling_factors is None:
+            freq_pooling_factors = [1, 2, 4, 8]
+        if time_pooling_factors is None:
+            time_pooling_factors = [1, 2, 4, 8]
         self.device = None
         self.time_pooling_factors = time_pooling_factors
         self.freq_pooling_factors = freq_pooling_factors
-        self.no_audiomae_mask = no_audiomae_mask
-        self.no_audiomae_average = no_audiomae_average
+        self.no_audio_mae_mask = no_audiomae_mask
+        self.no_audio_mae_average = no_audiomae_average
 
         self.eval_freq_pooling = eval_freq_pooling
         self.eval_time_pooling = eval_time_pooling
         self.mask_ratio = mask_ratio
         self.use_reg = regularization
+        self.avg_pooling = None
+        self.max_pooling = None
 
-        self.audiomae = Vanilla_AudioMAE()
-        self.audiomae.eval()
-        for p in self.audiomae.parameters():
+        self.audio_mae = Vanilla_AudioMAE()
+        self.audio_mae.eval()
+        for p in self.audio_mae.parameters():
             p.requires_grad = False
 
     # Required
-    def get_unconditional_condition(self, batchsize):
-        param = next(self.audiomae.parameters())
-        assert param.requires_grad == False
+    def get_unconditional_condition(self, batch_size):
+        param = next(self.audio_mae.parameters())
+        assert param.requires_grad is False
         device = param.device
-        # time_pool, freq_pool = max(self.time_pooling_factors), max(self.freq_pooling_factors)
         time_pool, freq_pool = min(self.eval_time_pooling, 64), min(
             self.eval_freq_pooling, 8
         )
-        # time_pool = self.time_pooling_factors[np.random.choice(list(range(len(self.time_pooling_factors))))]
-        # freq_pool = self.freq_pooling_factors[np.random.choice(list(range(len(self.freq_pooling_factors))))]
         token_num = int(512 / (time_pool * freq_pool))
         return [
-            torch.zeros((batchsize, token_num, 768)).to(device).float(),
-            torch.ones((batchsize, token_num)).to(device).float(),
+            torch.zeros((batch_size, token_num, 768)).to(device).float(),
+            torch.ones((batch_size, token_num)).to(device).float(),
         ]
 
     def pool(self, representation, time_pool=None, freq_pool=None):
@@ -429,27 +435,25 @@ class AudioMAEConditionCTPoolRand(nn.Module):
                         np.random.choice(list(range(len(self.time_pooling_factors))))
                     ],
                 )
-                # freq_pool = self.freq_pooling_factors[np.random.choice(list(range(len(self.freq_pooling_factors))))]
-                freq_pool = min(8, time_pool)  # TODO here I make some modification.
+                freq_pool = min(8, time_pool)
         else:
             time_pool, freq_pool = min(self.eval_time_pooling, 64), min(
                 self.eval_freq_pooling, 8
             )
 
-        self.avgpooling = nn.AvgPool2d(
+        self.avg_pooling = nn.AvgPool2d(
             kernel_size=(time_pool, freq_pool), stride=(time_pool, freq_pool)
         )
-        self.maxpooling = nn.MaxPool2d(
+        self.max_pooling = nn.MaxPool2d(
             kernel_size=(time_pool, freq_pool), stride=(time_pool, freq_pool)
         )
 
-        pooled = (
-            self.avgpooling(representation) + self.maxpooling(representation)
-        ) / 2  # [bs, embedding_dim, time_token_num, freq_token_num]
+        pooled = (self.avg_pooling(representation) + self.max_pooling(representation)) / 2
         pooled = pooled.flatten(2).transpose(1, 2)
-        return pooled  # [bs, token_num, embedding_dim]
+        return pooled
 
-    def regularization(self, x):
+    @staticmethod
+    def regularization(x):
         assert x.size(-1) == 768
         x = F.normalize(x, p=2, dim=-1)
         return x
@@ -459,15 +463,15 @@ class AudioMAEConditionCTPoolRand(nn.Module):
         assert batch.size(-2) == 1024 and batch.size(-1) == 128
 
         if self.device is None:
-            self.device = next(self.audiomae.parameters()).device
+            self.device = next(self.audio_mae.parameters()).device
 
         batch = batch.unsqueeze(1).to(self.device)
         with torch.no_grad():
-            representation = self.audiomae(
+            representation = self.audio_mae(
                 batch,
                 mask_ratio=self.mask_ratio,
-                no_mask=self.no_audiomae_mask,
-                no_average=self.no_audiomae_average,
+                no_mask=self.no_audio_mae_mask,
+                no_average=self.no_audio_mae_average,
             )
             representation = self.pool(representation, time_pool, freq_pool)
             if self.use_reg:
@@ -482,16 +486,16 @@ class AudioMAEConditionCTPoolRand(nn.Module):
 
 class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
     def __init__(
-        self,
-        pretrained_path="",
-        enable_cuda=False,
-        sampling_rate=16000,
-        embed_mode="audio",
-        amodel="HTSAT-base",
-        unconditional_prob=0.1,
-        random_mute=False,
-        max_random_mute_portion=0.5,
-        training_mode=True,
+            self,
+            pretrained_path="",
+            enable_cuda=False,
+            sampling_rate=16000,
+            embed_mode="audio",
+            amodel="HTSAT-base",
+            unconditional_prob=0.1,
+            random_mute=False,
+            max_random_mute_portion=0.5,
+            training_mode=True,
     ):
         super().__init__()
         self.device = "cpu"  # The model itself is on cpu
@@ -546,19 +550,22 @@ class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
         )[0:1]
         return torch.cat([self.unconditional_token.unsqueeze(0)] * batchsize, dim=0)
 
-    def batch_to_list(self, batch):
+    @staticmethod
+    def batch_to_list(batch):
         ret = []
         for i in range(batch.size(0)):
             ret.append(batch[i])
         return ret
 
-    def make_decision(self, probability):
+    @staticmethod
+    def make_decision(probability):
         if float(torch.rand(1)) < probability:
             return True
         else:
             return False
 
-    def random_uniform(self, start, end):
+    @staticmethod
+    def random_uniform(start, end):
         val = torch.rand(1).item()
         return start + (end - start) * val
 
@@ -570,7 +577,7 @@ class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
                 self.random_uniform(0, end=int(t_steps * self.max_random_mute_portion))
             )
             mute_start = int(self.random_uniform(0, t_steps - mute_size))
-            waveform[i, mute_start : mute_start + mute_size] = 0
+            waveform[i, mute_start: mute_start + mute_size] = 0
         return waveform
 
     def cos_similarity(self, waveform, text):
@@ -595,9 +602,7 @@ class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
         )[0:1]
 
     def forward(self, batch):
-        # If you want this conditioner to be unconditional, set self.unconditional_prob = 1.0
-        # If you want this conditioner to be fully conditional, set self.unconditional_prob = 0.0
-        if self.model.training == True and not self.training_mode:
+        if self.model.training and not self.training_mode:
             print(
                 "The pretrained CLAP model should always be in eval mode. Reloading model just in case you change the parameters."
             )
@@ -617,23 +622,10 @@ class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
         if self.unconditional_token is None:
             self.build_unconditional_emb()
 
-        # if(self.training_mode):
-        #     assert self.model.training == True
-        # else:
-        #     assert self.model.training == False
-
-        # the 'fusion' truncate mode can be changed to 'rand_trunc' if run in unfusion mode
         if self.embed_mode == "audio":
             if not self.training:
                 print("INFO: clap model calculate the audio embedding as condition")
             with torch.no_grad():
-                # assert (
-                #     self.sampling_rate == 16000
-                # ), "We only support 16000 sampling rate"
-
-                # if self.random_mute:
-                #     batch = self._random_mute(batch)
-                # batch: [bs, 1, t-samples]
                 if self.sampling_rate != 48000:
                     batch = torchaudio.functional.resample(
                         batch, orig_freq=self.sampling_rate, new_freq=48000
@@ -657,7 +649,7 @@ class CLAPAudioEmbeddingClassifierFreev2(nn.Module):
                 text_data = self.tokenizer(batch)
 
                 if isinstance(batch, str) or (
-                    isinstance(batch, list) and len(batch) == 1
+                        isinstance(batch, list) and len(batch) == 1
                 ):
                     for key in text_data.keys():
                         text_data[key] = text_data[key].unsqueeze(0)

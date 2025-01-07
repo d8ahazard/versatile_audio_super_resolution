@@ -1,16 +1,14 @@
-import torch
 import os
 
-import torch.nn.functional as F
 import numpy as np
-from audiosr.latent_diffusion.modules.ema import *
+import soundfile as sf
+import torch.nn.functional as F
 
 from audiosr.latent_diffusion.modules.diffusionmodules.model import Encoder, Decoder
 from audiosr.latent_diffusion.modules.distributions.distributions import (
     DiagonalGaussianDistribution,
 )
-import soundfile as sf
-
+from audiosr.latent_diffusion.modules.ema import *
 from audiosr.utilities.model import get_vocoder
 from audiosr.utilities.tools import synth_one_sample
 
@@ -89,7 +87,9 @@ class AutoencoderKL(nn.Module):
         self.logger_save_dir = save_dir
         self.logger_exp_name = exp_name
 
-    def init_from_ckpt(self, path, ignore_keys=list()):
+    def init_from_ckpt(self, path, ignore_keys=None):
+        if ignore_keys is None:
+            ignore_keys = list()
         sd = torch.load(path, map_location="cpu")["state_dict"]
         keys = list(sd.keys())
         for k in keys:
@@ -122,7 +122,7 @@ class AutoencoderKL(nn.Module):
         if self.image_key == "fbank":
             dec = dec.squeeze(1).permute(0, 2, 1)
             wav_reconstruction = vocoder_infer(dec, self.vocoder)
-        elif self.image_key == "stft":
+        else:
             dec = dec.squeeze(1).permute(0, 2, 1)
             wav_reconstruction = self.wave_decoder(dec)
         return wav_reconstruction
@@ -260,7 +260,7 @@ class AutoencoderKL(nn.Module):
                 wav_samples[0],
                 wav_prediction[0],
             )
-        elif self.image_key == "stft":
+        else:
             wav_prediction = (
                 self.decode_to_waveform(reconstructions)[index, 0]
                 .cpu()
@@ -273,24 +273,28 @@ class AutoencoderKL(nn.Module):
             wav_original = waveform[index, 0].cpu().detach().numpy()
 
         if self.logger is not None:
-            self.logger.experiment.log(
-                {
-                    "original_%s"
-                    % name: wandb.Audio(
-                        wav_original, caption="original", sample_rate=self.sampling_rate
-                    ),
-                    "reconstruct_%s"
-                    % name: wandb.Audio(
-                        wav_prediction,
-                        caption="reconstruct",
-                        sample_rate=self.sampling_rate,
-                    ),
-                    "samples_%s"
-                    % name: wandb.Audio(
-                        wav_samples, caption="samples", sample_rate=self.sampling_rate
-                    ),
-                }
-            )
+            try:
+                import wandb
+                self.logger.experiment.log(
+                    {
+                        "original_%s"
+                        % name: wandb.Audio(
+                            wav_original, caption="original", sample_rate=self.sampling_rate
+                        ),
+                        "reconstruct_%s"
+                        % name: wandb.Audio(
+                            wav_prediction,
+                            caption="reconstruct",
+                            sample_rate=self.sampling_rate,
+                        ),
+                        "samples_%s"
+                        % name: wandb.Audio(
+                            wav_samples, caption="samples", sample_rate=self.sampling_rate
+                        ),
+                    }
+                )
+            except ImportError:
+                print("wandb not installed, skipping audio logging")
 
         return wav_original, wav_prediction, wav_samples
 

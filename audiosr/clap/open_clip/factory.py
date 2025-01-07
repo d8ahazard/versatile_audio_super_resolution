@@ -75,12 +75,9 @@ def create_model(
     jit: bool = False,
     force_quick_gelu: bool = False,
     openai_model_cache_dir: str = os.path.expanduser("~/.cache/clip"),
-    skip_params=True,
     pretrained_audio: str = "",
-    pretrained_text: str = "",
     enable_fusion: bool = False,
     fusion_type: str = "None"
-    # pretrained_image: bool = False,
 ):
     amodel_name = amodel_name.replace(
         "/", "-"

@@ -22,6 +22,9 @@ class STFT(torch.nn.Module):
         self.win_length = win_length
         self.window = window
         self.forward_transform = None
+        self.num_samples = None
+        self.magnitude = None
+        self.phase = None
         scale = self.filter_length / self.hop_length
         fourier_basis = np.fft.fft(np.eye(self.filter_length))
 

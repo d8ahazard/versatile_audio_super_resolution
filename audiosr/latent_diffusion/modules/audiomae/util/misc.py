@@ -18,7 +18,10 @@ from pathlib import Path
 
 import torch
 import torch.distributed as dist
-from torch._six import inf
+from scipy._lib.array_api_compat.torch.linalg import inf
+
+
+#from torch._six import inf
 
 
 class SmoothedValue(object):

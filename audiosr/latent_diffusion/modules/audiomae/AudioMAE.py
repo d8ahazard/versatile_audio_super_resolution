@@ -4,18 +4,17 @@ Reference Repo: https://github.com/facebookresearch/AudioMAE
 
 import torch
 import torch.nn as nn
-from timm.models.layers import to_2tuple
+from timm.layers import to_2tuple
+
 import audiosr.latent_diffusion.modules.audiomae.models_vit as models_vit
 import audiosr.latent_diffusion.modules.audiomae.models_mae as models_mae
-
-# model = mae_vit_base_patch16(in_chans=1, audio_exp=True, img_size=(1024, 128))
 
 
 class PatchEmbed_new(nn.Module):
     """Flexible Image to Patch Embedding"""
 
     def __init__(
-        self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, stride=10
+            self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, stride=10
     ):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -54,7 +53,7 @@ class AudioMAE(nn.Module):
     """Audio Masked Autoencoder (MAE) pre-trained and finetuned on AudioSet (for SoundCLIP)"""
 
     def __init__(
-        self,
+            self,
     ):
         super().__init__()
         model = models_vit.__dict__["vit_base_patch16"](
@@ -101,7 +100,7 @@ class Vanilla_AudioMAE(nn.Module):
     """Audio Masked Autoencoder (MAE) pre-trained on AudioSet (for AudioLDM2)"""
 
     def __init__(
-        self,
+            self,
     ):
         super().__init__()
         model = models_mae.__dict__["mae_vit_base_patch16"](
@@ -126,24 +125,13 @@ class Vanilla_AudioMAE(nn.Module):
             # embed: [B, 513, 768] for mask_ratio=0.0
             if no_mask:
                 if no_average:
-                    raise RuntimeError("This function is deprecated")
+                    # raise RuntimeError("This function is deprecated")
                     embed = self.model.forward_encoder_no_random_mask_no_average(
                         x
                     )  # mask_ratio
                 else:
                     embed = self.model.forward_encoder_no_mask(x)  # mask_ratio
             else:
-                raise RuntimeError("This function is deprecated")
+                # raise RuntimeError("This function is deprecated")
                 embed, _, _, _ = self.model.forward_encoder(x, mask_ratio=mask_ratio)
         return embed
-
-
-if __name__ == "__main__":
-    model = Vanilla_AudioMAE().cuda()
-    input = torch.randn(4, 1, 1024, 128).cuda()
-    print("The first run")
-    embed = model(input, mask_ratio=0.0, no_mask=True)
-    print(embed)
-    print("The second run")
-    embed = model(input, mask_ratio=0.0)
-    print(embed)
