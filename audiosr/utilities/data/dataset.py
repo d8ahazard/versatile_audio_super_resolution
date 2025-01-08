@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-import audiosr.utilities.audio as Audio
+import utilities.audio as Audio
 from utilities.tools import load_json
 
 import random

@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from timm.layers import to_2tuple
 
-import audiosr.latent_diffusion.modules.audiomae.models_vit as models_vit
-import audiosr.latent_diffusion.modules.audiomae.models_mae as models_mae
+import latent_diffusion.modules.audiomae.models_vit as models_vit
+import latent_diffusion.modules.audiomae.models_mae as models_mae
 
 
 class PatchEmbed_new(nn.Module):

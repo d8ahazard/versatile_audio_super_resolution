@@ -5,7 +5,7 @@ from torch.backends import cudnn, mps
 import torchaudio
 import yaml
 
-import audiosr.latent_diffusion.modules.phoneme_encoder.text as text
+import latent_diffusion.modules.phoneme_encoder.text as text
 from latent_diffusion.models.ddpm import LatentDiffusion
 from utils import (
     default_audioldm_config,
