@@ -21,7 +21,7 @@ import torch.distributed as dist
 from scipy._lib.array_api_compat.torch.linalg import inf
 
 
-#from torch._six import inf
+# from torch._six import inf
 
 
 class SmoothedValue(object):
@@ -284,13 +284,13 @@ class NativeScalerWithGradNormCount:
         self._scaler = torch.cuda.amp.GradScaler()
 
     def __call__(
-        self,
-        loss,
-        optimizer,
-        clip_grad=None,
-        parameters=None,
-        create_graph=False,
-        update_grad=True,
+            self,
+            loss,
+            optimizer,
+            clip_grad=None,
+            parameters=None,
+            create_graph=False,
+            update_grad=True,
     ):
         self._scaler.scale(loss).backward(create_graph=create_graph)
         if update_grad:
@@ -371,9 +371,9 @@ def load_model(args, model_without_ddp, optimizer, loss_scaler):
         model_without_ddp.load_state_dict(checkpoint["model"])
         print("Resume checkpoint %s" % args.resume)
         if (
-            "optimizer" in checkpoint
-            and "epoch" in checkpoint
-            and not (hasattr(args, "eval") and args.eval)
+                "optimizer" in checkpoint
+                and "epoch" in checkpoint
+                and not (hasattr(args, "eval") and args.eval)
         ):
             optimizer.load_state_dict(checkpoint["optimizer"])
             args.start_epoch = checkpoint["epoch"] + 1

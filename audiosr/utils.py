@@ -82,7 +82,7 @@ def lowpass_filtering_prepare_inference(dl_output):
                   ) * 24000
 
     # If the audio is almost empty. Give up processing
-    if (cutoff_freq < 1000):
+    if cutoff_freq < 1000:
         cutoff_freq = 24000
 
     order = 8
@@ -254,7 +254,8 @@ def get_time():
 
 
 def seed_everything(seed):
-    import random, os
+    import random
+    import os
     import numpy as np
     import torch
 
@@ -307,7 +308,7 @@ def save_wave(waveform, inputpath, savepath, name="outwav", samplerate=16000):
         else:
             fname = (
                 "%s.wav" % os.path.basename(name[i])
-                if (not ".wav" in name[i])
+                if (".wav" not in name[i])
                 else os.path.basename(name[i]).split(".")[0]
             )
             # Avoid the file name too long to be saved

@@ -352,13 +352,16 @@ def get_mauc(pred, target):
 
 
 class LPMetrics(object):
-    def __init__(self, metric_names=["map", "acc", "mauc"]):
+    def __init__(self, metric_names=None):
+        if metric_names is None:
+            metric_names = ["map", "acc", "mauc"]
         self.metrics = []
         for name in metric_names:
             self.metrics.append(self.get_metric(name))
         self.metric_names = metric_names
 
-    def get_metric(self, name):
+    @staticmethod
+    def get_metric(name):
         if name == "map":
             return get_map
         elif name == "acc":

@@ -166,16 +166,16 @@ class AttBlock(nn.Module):
 
 class Cnn14(nn.Module):
     def __init__(
-        self,
-        sample_rate,
-        window_size,
-        hop_size,
-        mel_bins,
-        fmin,
-        fmax,
-        classes_num,
-        enable_fusion=False,
-        fusion_type="None",
+            self,
+            sample_rate,
+            window_size,
+            hop_size,
+            mel_bins,
+            fmin,
+            fmax,
+            classes_num,
+            enable_fusion=False,
+            fusion_type="None",
     ):
         super(Cnn14, self).__init__()
 
@@ -223,7 +223,7 @@ class Cnn14(nn.Module):
 
         self.bn0 = nn.BatchNorm2d(64)
 
-        if (self.enable_fusion) and (self.fusion_type == "channel_map"):
+        if self.enable_fusion and (self.fusion_type == "channel_map"):
             self.conv_block1 = ConvBlock(in_channels=4, out_channels=64)
         else:
             self.conv_block1 = ConvBlock(in_channels=1, out_channels=64)
@@ -236,8 +236,8 @@ class Cnn14(nn.Module):
         self.fc1 = nn.Linear(2048, 2048, bias=True)
         self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
 
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_1d", "aff_1d", "iaff_1d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_1d", "aff_1d", "iaff_1d"]
         ):
             self.mel_conv1d = nn.Sequential(
                 nn.Conv1d(64, 64, kernel_size=5, stride=3, padding=2),
@@ -250,8 +250,8 @@ class Cnn14(nn.Module):
             elif self.fusion_type == "iaff_1d":
                 self.fusion_model = iAFF(channels=64, type="1D")
 
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
         ):
             self.mel_conv2d = nn.Sequential(
                 nn.Conv2d(1, 64, kernel_size=(5, 5), stride=(6, 2), padding=(2, 2)),
@@ -344,8 +344,8 @@ class Cnn14(nn.Module):
         # Mixup on spectrogram
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
         ):
             global_x = x[:, 0:1, :, :]
 
@@ -423,16 +423,16 @@ class Cnn14(nn.Module):
 
 class Cnn6(nn.Module):
     def __init__(
-        self,
-        sample_rate,
-        window_size,
-        hop_size,
-        mel_bins,
-        fmin,
-        fmax,
-        classes_num,
-        enable_fusion=False,
-        fusion_type="None",
+            self,
+            sample_rate,
+            window_size,
+            hop_size,
+            mel_bins,
+            fmin,
+            fmax,
+            classes_num,
+            enable_fusion=False,
+            fusion_type="None",
     ):
         super(Cnn6, self).__init__()
 
@@ -549,16 +549,16 @@ class Cnn6(nn.Module):
 
 class Cnn10(nn.Module):
     def __init__(
-        self,
-        sample_rate,
-        window_size,
-        hop_size,
-        mel_bins,
-        fmin,
-        fmax,
-        classes_num,
-        enable_fusion=False,
-        fusion_type="None",
+            self,
+            sample_rate,
+            window_size,
+            hop_size,
+            mel_bins,
+            fmin,
+            fmax,
+            classes_num,
+            enable_fusion=False,
+            fusion_type="None",
     ):
         super(Cnn10, self).__init__()
 

@@ -9,7 +9,8 @@
 # --------------------------------------------------------
 
 import os
-import PIL
+import PIL.Image
+from matplotlib.image import BICUBIC
 
 from torchvision import datasets, transforms
 
@@ -57,7 +58,7 @@ def build_transform(is_train, args):
     size = int(args.input_size / crop_pct)
     t.append(
         transforms.Resize(
-            size, interpolation=PIL.Image.BICUBIC
+            size, interpolation=BICUBIC
         ),  # to maintain same ratio w.r.t. 224 images
     )
     t.append(transforms.CenterCrop(args.input_size))

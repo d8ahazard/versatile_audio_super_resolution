@@ -8,11 +8,11 @@ import torchaudio
 from transformers import AutoTokenizer, T5Config
 from transformers import RobertaTokenizer, T5EncoderModel
 
-from clap.open_clip import create_model
-from clap.training.data import get_audio_features
-from latent_diffusion.modules.audiomae.AudioMAE import Vanilla_AudioMAE
-from latent_diffusion.modules.phoneme_encoder.encoder import TextEncoder
-from latent_diffusion.util import instantiate_from_config
+from audiosr.clap.open_clip import create_model
+from audiosr.clap.training.data import get_audio_features
+from audiosr.latent_diffusion.modules.audiomae.AudioMAE import Vanilla_AudioMAE
+from audiosr.latent_diffusion.modules.phoneme_encoder.encoder import TextEncoder
+from audiosr.latent_diffusion.util import instantiate_from_config
 
 """
 The model forward function can return three types of data:

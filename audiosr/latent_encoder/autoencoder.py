@@ -4,37 +4,39 @@ import numpy as np
 import soundfile as sf
 import torch.nn.functional as F
 
-from latent_diffusion.modules.diffusionmodules.model import Encoder, Decoder
-from latent_diffusion.modules.distributions.distributions import (
+from audiosr.latent_diffusion.modules.diffusionmodules.model import Encoder, Decoder
+from audiosr.latent_diffusion.modules.distributions.distributions import (
     DiagonalGaussianDistribution,
 )
-from latent_diffusion.modules.ema import *
-from utilities.model import get_vocoder
-from utilities.tools import synth_one_sample
+from audiosr.latent_diffusion.modules.ema import *
+from audiosr.utilities.model import get_vocoder
+from audiosr.utilities.tools import synth_one_sample
 
 
 class AutoencoderKL(nn.Module):
     def __init__(
-        self,
-        ddconfig=None,
-        lossconfig=None,
-        batchsize=None,
-        embed_dim=None,
-        time_shuffle=1,
-        subband=1,
-        sampling_rate=16000,
-        ckpt_path=None,
-        reload_from_ckpt=None,
-        ignore_keys=[],
-        image_key="fbank",
-        colorize_nlabels=None,
-        monitor=None,
-        base_learning_rate=1e-5,
+            self,
+            ddconfig=None,
+            lossconfig=None,
+            batchsize=None,
+            embed_dim=None,
+            time_shuffle=1,
+            subband=1,
+            sampling_rate=16000,
+            ckpt_path=None,
+            reload_from_ckpt=None,
+            ignore_keys=None,
+            image_key="fbank",
+            colorize_nlabels=None,
+            monitor=None,
+            base_learning_rate=1e-5,
     ):
         super().__init__()
+        if ignore_keys is None:
+            ignore_keys = []
         self.automatic_optimization = False
         assert (
-            "mel_bins" in ddconfig.keys()
+                "mel_bins" in ddconfig.keys()
         ), "mel_bins is not specified in the Autoencoder config"
         num_mel = ddconfig["mel_bins"]
         self.image_key = image_key
@@ -117,7 +119,7 @@ class AutoencoderKL(nn.Module):
         return dec
 
     def decode_to_waveform(self, dec):
-        from utilities.model import vocoder_infer
+        from audiosr.utilities.model import vocoder_infer
 
         if self.image_key == "fbank":
             dec = dec.squeeze(1).permute(0, 2, 1)
@@ -173,7 +175,8 @@ class AutoencoderKL(nn.Module):
             plt.savefig("time_%s.png" % i)
             plt.close()
 
-    def get_input(self, batch):
+    @staticmethod
+    def get_input(batch):
         fname, text, label_indices, waveform, stft, fbank = (
             batch["fname"],
             batch["text"],
@@ -298,7 +301,8 @@ class AutoencoderKL(nn.Module):
 
         return wav_original, wav_prediction, wav_samples
 
-    def tensor2numpy(self, tensor):
+    @staticmethod
+    def tensor2numpy(tensor):
         return tensor.cpu().detach().numpy()
 
     def to_rgb(self, x):
@@ -315,10 +319,12 @@ class IdentityFirstStage(torch.nn.Module):
         self.vq_interface = vq_interface  # TODO: Should be true by default but check to not break older stuff
         super().__init__()
 
-    def encode(self, x, *args, **kwargs):
+    @staticmethod
+    def encode(x, *args, **kwargs):
         return x
 
-    def decode(self, x, *args, **kwargs):
+    @staticmethod
+    def decode(x, *args, **kwargs):
         return x
 
     def quantize(self, x, *args, **kwargs):
@@ -326,5 +332,6 @@ class IdentityFirstStage(torch.nn.Module):
             return x, None, [None, None, None]
         return x
 
-    def forward(self, x, *args, **kwargs):
+    @staticmethod
+    def forward(x, *args, **kwargs):
         return x

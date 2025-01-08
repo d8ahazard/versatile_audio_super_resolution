@@ -51,7 +51,7 @@ def drop_path(x, drop_prob: float = 0.0, training: bool = False):
         return x
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (
-        x.ndim - 1
+            x.ndim - 1
     )  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
     random_tensor.floor_()  # binarize
@@ -74,16 +74,16 @@ class PatchEmbed(nn.Module):
     """2D Image to Patch Embedding"""
 
     def __init__(
-        self,
-        img_size=224,
-        patch_size=16,
-        in_chans=3,
-        embed_dim=768,
-        norm_layer=None,
-        flatten=True,
-        patch_stride=16,
-        enable_fusion=False,
-        fusion_type="None",
+            self,
+            img_size=224,
+            patch_size=16,
+            in_chans=3,
+            embed_dim=768,
+            norm_layer=None,
+            flatten=True,
+            patch_stride=16,
+            enable_fusion=False,
+            fusion_type="None",
     ):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -109,7 +109,7 @@ class PatchEmbed(nn.Module):
             (patch_size[1] - patch_stride[1]) // 2,
         )
 
-        if (self.enable_fusion) and (self.fusion_type == "channel_map"):
+        if self.enable_fusion and (self.fusion_type == "channel_map"):
             self.proj = nn.Conv2d(
                 in_chans * 4,
                 embed_dim,
@@ -127,8 +127,8 @@ class PatchEmbed(nn.Module):
             )
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
         ):
             self.mel_conv2d = nn.Conv2d(
                 in_chans,
@@ -145,15 +145,15 @@ class PatchEmbed(nn.Module):
                 self.fusion_model = iAFF(channels=embed_dim, type="2D")
 
     def forward(self, x, longer_idx=None):
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_2d", "aff_2d", "iaff_2d"]
         ):
             global_x = x[:, 0:1, :, :]
 
             # global processing
             B, C, H, W = global_x.shape
             assert (
-                H == self.img_size[0] and W == self.img_size[1]
+                    H == self.img_size[0] and W == self.img_size[1]
             ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
             global_x = self.proj(global_x)
             TW = global_x.size(-1)
@@ -187,7 +187,7 @@ class PatchEmbed(nn.Module):
         else:
             B, C, H, W = x.shape
             assert (
-                H == self.img_size[0] and W == self.img_size[1]
+                    H == self.img_size[0] and W == self.img_size[1]
             ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
             x = self.proj(x)
 
@@ -201,12 +201,12 @@ class Mlp(nn.Module):
     """MLP as used in Vision Transformer, MLP-Mixer and related networks"""
 
     def __init__(
-        self,
-        in_features,
-        hidden_features=None,
-        out_features=None,
-        act_layer=nn.GELU,
-        drop=0.0,
+            self,
+            in_features,
+            hidden_features=None,
+            out_features=None,
+            act_layer=nn.GELU,
+            drop=0.0,
     ):
         super().__init__()
         out_features = out_features or in_features
@@ -359,21 +359,21 @@ class WindowAttention(nn.Module):
     """
 
     def __init__(
-        self,
-        dim,
-        window_size,
-        num_heads,
-        qkv_bias=True,
-        qk_scale=None,
-        attn_drop=0.0,
-        proj_drop=0.0,
+            self,
+            dim,
+            window_size,
+            num_heads,
+            qkv_bias=True,
+            qk_scale=None,
+            attn_drop=0.0,
+            proj_drop=0.0,
     ):
         super().__init__()
         self.dim = dim
         self.window_size = window_size  # Wh, Ww
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim**-0.5
+        self.scale = qk_scale or head_dim ** -0.5
 
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
@@ -386,7 +386,7 @@ class WindowAttention(nn.Module):
         coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = (
-            coords_flatten[:, :, None] - coords_flatten[:, None, :]
+                coords_flatten[:, :, None] - coords_flatten[:, None, :]
         )  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(
             1, 2, 0
@@ -479,21 +479,21 @@ class SwinTransformerBlock(nn.Module):
     """
 
     def __init__(
-        self,
-        dim,
-        input_resolution,
-        num_heads,
-        window_size=7,
-        shift_size=0,
-        mlp_ratio=4.0,
-        qkv_bias=True,
-        qk_scale=None,
-        drop=0.0,
-        attn_drop=0.0,
-        drop_path=0.0,
-        act_layer=nn.GELU,
-        norm_layer=nn.LayerNorm,
-        norm_before_mlp="ln",
+            self,
+            dim,
+            input_resolution,
+            num_heads,
+            window_size=7,
+            shift_size=0,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            qk_scale=None,
+            drop=0.0,
+            attn_drop=0.0,
+            drop_path=0.0,
+            act_layer=nn.GELU,
+            norm_layer=nn.LayerNorm,
+            norm_before_mlp="ln",
     ):
         super().__init__()
         self.dim = dim
@@ -508,7 +508,7 @@ class SwinTransformerBlock(nn.Module):
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
         assert (
-            0 <= self.shift_size < self.window_size
+                0 <= self.shift_size < self.window_size
         ), "shift_size must in 0-window_size"
 
         self.norm1 = norm_layer(dim)
@@ -694,22 +694,22 @@ class BasicLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        dim,
-        input_resolution,
-        depth,
-        num_heads,
-        window_size,
-        mlp_ratio=4.0,
-        qkv_bias=True,
-        qk_scale=None,
-        drop=0.0,
-        attn_drop=0.0,
-        drop_path=0.0,
-        norm_layer=nn.LayerNorm,
-        downsample=None,
-        use_checkpoint=False,
-        norm_before_mlp="ln",
+            self,
+            dim,
+            input_resolution,
+            depth,
+            num_heads,
+            window_size,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            qk_scale=None,
+            drop=0.0,
+            attn_drop=0.0,
+            drop_path=0.0,
+            norm_layer=nn.LayerNorm,
+            downsample=None,
+            use_checkpoint=False,
+            norm_before_mlp="ln",
     ):
         super().__init__()
         self.dim = dim
@@ -796,34 +796,38 @@ class HTSAT_Swin_Transformer(nn.Module):
     """
 
     def __init__(
-        self,
-        spec_size=256,
-        patch_size=4,
-        patch_stride=(4, 4),
-        in_chans=1,
-        num_classes=527,
-        embed_dim=96,
-        depths=[2, 2, 6, 2],
-        num_heads=[4, 8, 16, 32],
-        window_size=8,
-        mlp_ratio=4.0,
-        qkv_bias=True,
-        qk_scale=None,
-        drop_rate=0.0,
-        attn_drop_rate=0.0,
-        drop_path_rate=0.1,
-        norm_layer=nn.LayerNorm,
-        ape=False,
-        patch_norm=True,
-        use_checkpoint=False,
-        norm_before_mlp="ln",
-        config=None,
-        enable_fusion=False,
-        fusion_type="None",
-        **kwargs,
+            self,
+            spec_size=256,
+            patch_size=4,
+            patch_stride=(4, 4),
+            in_chans=1,
+            num_classes=527,
+            embed_dim=96,
+            depths=None,
+            num_heads=None,
+            window_size=8,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            qk_scale=None,
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            drop_path_rate=0.1,
+            norm_layer=nn.LayerNorm,
+            ape=False,
+            patch_norm=True,
+            use_checkpoint=False,
+            norm_before_mlp="ln",
+            config=None,
+            enable_fusion=False,
+            fusion_type="None",
+            **kwargs,
     ):
         super(HTSAT_Swin_Transformer, self).__init__()
 
+        if depths is None:
+            depths = [2, 2, 6, 2]
+        if num_heads is None:
+            num_heads = [4, 8, 16, 32]
         self.config = config
         self.spec_size = spec_size
         self.patch_stride = patch_stride
@@ -929,10 +933,10 @@ class HTSAT_Swin_Transformer(nn.Module):
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
             layer = BasicLayer(
-                dim=int(self.embed_dim * 2**i_layer),
+                dim=int(self.embed_dim * 2 ** i_layer),
                 input_resolution=(
-                    patches_resolution[0] // (2**i_layer),
-                    patches_resolution[1] // (2**i_layer),
+                    patches_resolution[0] // (2 ** i_layer),
+                    patches_resolution[1] // (2 ** i_layer),
                 ),
                 depth=self.depths[i_layer],
                 num_heads=self.num_heads[i_layer],
@@ -943,8 +947,8 @@ class HTSAT_Swin_Transformer(nn.Module):
                 drop=self.drop_rate,
                 attn_drop=self.attn_drop_rate,
                 drop_path=dpr[
-                    sum(self.depths[:i_layer]) : sum(self.depths[: i_layer + 1])
-                ],
+                          sum(self.depths[:i_layer]): sum(self.depths[: i_layer + 1])
+                          ],
                 norm_layer=self.norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint,
@@ -957,10 +961,10 @@ class HTSAT_Swin_Transformer(nn.Module):
         self.maxpool = nn.AdaptiveMaxPool1d(1)
 
         SF = (
-            self.spec_size
-            // (2 ** (len(self.depths) - 1))
-            // self.patch_stride[0]
-            // self.freq_ratio
+                self.spec_size
+                // (2 ** (len(self.depths) - 1))
+                // self.patch_stride[0]
+                // self.freq_ratio
         )
         self.tscam_conv = nn.Conv2d(
             in_channels=self.num_features,
@@ -970,8 +974,8 @@ class HTSAT_Swin_Transformer(nn.Module):
         )
         self.head = nn.Linear(num_classes, num_classes)
 
-        if (self.enable_fusion) and (
-            self.fusion_type in ["daf_1d", "aff_1d", "iaff_1d"]
+        if self.enable_fusion and (
+                self.fusion_type in ["daf_1d", "aff_1d", "iaff_1d"]
         ):
             self.mel_conv1d = nn.Sequential(
                 nn.Conv1d(64, 64, kernel_size=5, stride=3, padding=2),
@@ -986,7 +990,8 @@ class HTSAT_Swin_Transformer(nn.Module):
 
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    @staticmethod
+    def _init_weights(m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=0.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
@@ -1055,7 +1060,8 @@ class HTSAT_Swin_Transformer(nn.Module):
 
         return output_dict
 
-    def crop_wav(self, x, crop_size, spe_pos=None):
+    @staticmethod
+    def crop_wav(x, crop_size, spe_pos=None):
         time_steps = x.shape[2]
         tx = torch.zeros(x.shape[0], x.shape[1], crop_size, x.shape[3]).to(x.device)
         for i in range(len(x)):
@@ -1063,7 +1069,7 @@ class HTSAT_Swin_Transformer(nn.Module):
                 crop_pos = random.randint(0, time_steps - crop_size - 1)
             else:
                 crop_pos = spe_pos
-            tx[i][0] = x[i, 0, crop_pos : crop_pos + crop_size, :]
+            tx[i][0] = x[i, 0, crop_pos: crop_pos + crop_size, :]
         return tx
 
     # Reshape the wavform to a img size, if you want to use the pretrained swin transformer model
@@ -1072,7 +1078,7 @@ class HTSAT_Swin_Transformer(nn.Module):
         target_T = int(self.spec_size * self.freq_ratio)
         target_F = self.spec_size // self.freq_ratio
         assert (
-            T <= target_T and F <= target_F
+                T <= target_T and F <= target_F
         ), "the wav size should less than or equal to the swin input size"
         # to avoid bicubic zero error
         if T < target_T:
@@ -1102,7 +1108,7 @@ class HTSAT_Swin_Transformer(nn.Module):
         target_T = int(self.spec_size * self.freq_ratio)
         target_F = self.spec_size // self.freq_ratio
         assert (
-            T <= target_T and F <= target_F
+                T <= target_T and F <= target_F
         ), "the wav size should less than or equal to the swin input size"
         # to avoid bicubic zero error
         if T < target_T:
@@ -1114,12 +1120,12 @@ class HTSAT_Swin_Transformer(nn.Module):
                 x, (x.shape[2], target_F), mode="bicubic", align_corners=True
             )
         x = x.permute(0, 1, 3, 2).contiguous()  # B C F T
-        x = x[:, :, :, cur_pos : cur_pos + self.spec_size]
+        x = x[:, :, :, cur_pos: cur_pos + self.spec_size]
         x = x.repeat(repeats=(1, 1, 4, 1))
         return x
 
     def forward(
-        self, x: torch.Tensor, mixup_lambda=None, infer_mode=False, device=None
+            self, x: torch.Tensor, mixup_lambda=None, infer_mode=False, device=None
     ):  # out_feat_keys: List[str] = None):
         if self.enable_fusion and x["longer"].sum() == 0:
             # if no audio is longer than 10s, then randomly select one audio to be longer

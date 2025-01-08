@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as f
 
-import latent_diffusion.modules.phoneme_encoder.commons as commons
+import audiosr.latent_diffusion.modules.phoneme_encoder.commons as commons
 
 LRELU_SLOPE = 0.1
 

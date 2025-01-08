@@ -6,8 +6,8 @@ import numpy as np
 from diffusers.models.autoencoders.vae import DiagonalGaussianDistribution
 from einops import rearrange
 
-from latent_diffusion.util import instantiate_from_config
-from latent_diffusion.modules.attention import LinearAttention
+from audiosr.latent_diffusion.util import instantiate_from_config
+from audiosr.latent_diffusion.modules.attention import LinearAttention
 
 
 def get_timestep_embedding(timesteps, embedding_dim):
@@ -434,10 +434,12 @@ class Encoder(nn.Module):
         double_z=True,
         use_linear_attn=False,
         attn_type="vanilla",
-        downsample_time_stride4_levels=[],
+            downsample_time_stride4_levels=None,
         **ignore_kwargs,
     ):
         super().__init__()
+        if downsample_time_stride4_levels is None:
+            downsample_time_stride4_levels = []
         if use_linear_attn:
             attn_type = "linear"
         self.ch = ch
@@ -561,11 +563,13 @@ class Decoder(nn.Module):
         give_pre_end=False,
         tanh_out=False,
         use_linear_attn=False,
-        downsample_time_stride4_levels=[],
+            downsample_time_stride4_levels=None,
         attn_type="vanilla",
         **ignorekwargs,
     ):
         super().__init__()
+        if downsample_time_stride4_levels is None:
+            downsample_time_stride4_levels = []
         if use_linear_attn:
             attn_type = "linear"
         self.ch = ch
@@ -577,6 +581,7 @@ class Decoder(nn.Module):
         self.give_pre_end = give_pre_end
         self.tanh_out = tanh_out
         self.downsample_time_stride4_levels = downsample_time_stride4_levels
+        self.last_z_shape = None
 
         if len(self.downsample_time_stride4_levels) > 0:
             assert max(self.downsample_time_stride4_levels) < self.num_resolutions, (
@@ -976,8 +981,9 @@ class Resize(nn.Module):
             print(
                 f"Note: {self.__class__.__name} uses learned downsampling and will ignore the fixed {mode} mode"
             )
-            raise NotImplementedError()
+            #raise NotImplementedError()
             assert in_channels is not None
+
             # no asymmetric padding in torch conv, must do it ourselves
             self.conv = torch.nn.Conv2d(
                 in_channels, in_channels, kernel_size=4, stride=2, padding=1

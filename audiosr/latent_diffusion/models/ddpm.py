@@ -1,37 +1,32 @@
-from multiprocessing.sharedctypes import Value
 import os
-import librosa
-import torch
-import torch.nn as nn
-import numpy as np
-from einops import rearrange, repeat
 from contextlib import contextmanager
 from functools import partial
-from tqdm import tqdm
-from torchvision.utils import make_grid
-from latent_diffusion.modules.encoders.modules import *
+from multiprocessing.sharedctypes import Value
 
-from latent_diffusion.util import (
+import librosa
+import soundfile as sf
+from einops import rearrange, repeat
+from torchvision.utils import make_grid
+from tqdm import tqdm
+
+from audiosr.latent_diffusion.models.ddim import DDIMSampler
+from audiosr.latent_diffusion.models.plms import PLMSSampler
+from audiosr.latent_diffusion.modules.diffusionmodules.util import (
+    make_beta_schedule,
+    extract_into_tensor,
+    noise_like,
+)
+from audiosr.latent_diffusion.modules.distributions.distributions import (
+    DiagonalGaussianDistribution,
+)
+from audiosr.latent_diffusion.modules.ema import LitEma
+from audiosr.latent_diffusion.modules.encoders.modules import *
+from audiosr.latent_diffusion.util import (
     exists,
     default,
     count_params,
     instantiate_from_config,
 )
-from latent_diffusion.modules.ema import LitEma
-from latent_diffusion.modules.distributions.distributions import (
-    DiagonalGaussianDistribution,
-)
-
-from latent_diffusion.modules.diffusionmodules.util import (
-    make_beta_schedule,
-    extract_into_tensor,
-    noise_like,
-)
-
-from latent_diffusion.models.ddim import DDIMSampler
-from latent_diffusion.models.plms import PLMSSampler
-import soundfile as sf
-import os
 
 __conditioning_keys__ = {"concat": "c_concat", "crossattn": "c_crossattn", "adm": "y"}
 
@@ -48,41 +43,55 @@ def uniform_on_device(r1, r2, shape, device):
 
 class DDPM(nn.Module):
     # classic DDPM with Gaussian diffusion, in image space
+    num_timesteps = 1000
+    linear_start = 1e-4
+    linear_end = 2e-2
+    tracked_steps = 0
+    param_dict = {}
+    learning_rate = 1e-4
+    cond_ids = None
+    shorten_cond_schedule = False
+    cond_schedule = None
+    first_stage_model = None
+    cond_stage_model_metatdata = None
+
     def __init__(
-        self,
-        unet_config,
-        sampling_rate=None,
-        timesteps=1000,
-        beta_schedule="linear",
-        loss_type="l2",
-        ckpt_path=None,
-        ignore_keys=[],
-        load_only_unet=False,
-        monitor="val/loss",
-        use_ema=True,
-        first_stage_key="image",
-        latent_t_size=256,
-        latent_f_size=16,
-        channels=3,
-        log_every_t=100,
-        clip_denoised=True,
-        linear_start=1e-4,
-        linear_end=2e-2,
-        cosine_s=8e-3,
-        given_betas=None,
-        original_elbo_weight=0.0,
-        v_posterior=0.0,  # weight for choosing posterior variance as sigma = (1-v) * beta_tilde + v * beta
-        l_simple_weight=1.0,
-        conditioning_key=None,
-        parameterization="eps",  # all assuming fixed variance schedules
-        scheduler_config=None,
-        use_positional_encodings=False,
-        learn_logvar=False,
-        logvar_init=0.0,
-        evaluator=None,
-        device=None,
+            self,
+            unet_config,
+            sampling_rate=None,
+            timesteps=1000,
+            beta_schedule="linear",
+            loss_type="l2",
+            ckpt_path=None,
+            ignore_keys=None,
+            load_only_unet=False,
+            monitor="val/loss",
+            use_ema=True,
+            first_stage_key="image",
+            latent_t_size=256,
+            latent_f_size=16,
+            channels=3,
+            log_every_t=100,
+            clip_denoised=True,
+            linear_start=1e-4,
+            linear_end=2e-2,
+            cosine_s=8e-3,
+            given_betas=None,
+            original_elbo_weight=0.0,
+            v_posterior=0.0,  # weight for choosing posterior variance as sigma = (1-v) * beta_tilde + v * beta
+            l_simple_weight=1.0,
+            conditioning_key=None,
+            parameterization="eps",  # all assuming fixed variance schedules
+            scheduler_config=None,
+            use_positional_encodings=False,
+            learn_logvar=False,
+            logvar_init=0.0,
+            evaluator=None,
+            device=None,
     ):
         super().__init__()
+        if ignore_keys is None:
+            ignore_keys = []
         assert parameterization in [
             "eps",
             "x0",
@@ -189,13 +198,13 @@ class DDPM(nn.Module):
         self.logger_exp_name = exp_name
 
     def register_schedule(
-        self,
-        given_betas=None,
-        beta_schedule="linear",
-        timesteps=1000,
-        linear_start=1e-4,
-        linear_end=2e-2,
-        cosine_s=8e-3,
+            self,
+            given_betas=None,
+            beta_schedule="linear",
+            timesteps=1000,
+            linear_start=1e-4,
+            linear_end=2e-2,
+            cosine_s=8e-3,
     ):
         if exists(given_betas):
             betas = given_betas
@@ -216,7 +225,7 @@ class DDPM(nn.Module):
         self.linear_start = linear_start
         self.linear_end = linear_end
         assert (
-            alphas_cumprod.shape[0] == self.num_timesteps
+                alphas_cumprod.shape[0] == self.num_timesteps
         ), "alphas have to be defined for each timestep"
 
         to_torch = partial(torch.tensor, dtype=torch.float32)
@@ -243,7 +252,7 @@ class DDPM(nn.Module):
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         posterior_variance = (1 - self.v_posterior) * betas * (
-            1.0 - alphas_cumprod_prev
+                1.0 - alphas_cumprod_prev
         ) / (1.0 - alphas_cumprod) + self.v_posterior * betas
         # above: equal to 1. / (1. / (1. - alpha_cumprod_tm1) + alpha_t / beta_t)
         self.register_buffer("posterior_variance", to_torch(posterior_variance))
@@ -264,26 +273,26 @@ class DDPM(nn.Module):
         )
 
         if self.parameterization == "eps":
-            lvlb_weights = self.betas**2 / (
-                2
-                * self.posterior_variance
-                * to_torch(alphas)
-                * (1 - self.alphas_cumprod)
-            )
-        elif self.parameterization == "x0":
-            lvlb_weights = (
-                0.5
-                * np.sqrt(torch.Tensor(alphas_cumprod))
-                / (2.0 * 1 - torch.Tensor(alphas_cumprod))
-            )
-        elif self.parameterization == "v":
-            lvlb_weights = torch.ones_like(
-                self.betas**2
-                / (
+            lvlb_weights = self.betas ** 2 / (
                     2
                     * self.posterior_variance
                     * to_torch(alphas)
                     * (1 - self.alphas_cumprod)
+            )
+        elif self.parameterization == "x0":
+            lvlb_weights = (
+                    0.5
+                    * np.sqrt(torch.Tensor(alphas_cumprod))
+                    / (2.0 * 1 - torch.Tensor(alphas_cumprod))
+            )
+        elif self.parameterization == "v":
+            lvlb_weights = torch.ones_like(
+                self.betas ** 2
+                / (
+                        2
+                        * self.posterior_variance
+                        * to_torch(alphas)
+                        * (1 - self.alphas_cumprod)
                 )
             )
         else:
@@ -308,7 +317,9 @@ class DDPM(nn.Module):
                 # if context is not None:
                 #     print(f"{context}: Restored training weights")
 
-    def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
+    def init_from_ckpt(self, path, ignore_keys=None, only_model=False):
+        if ignore_keys is None:
+            ignore_keys = list()
         sd = torch.load(path, map_location="cpu")
         if "state_dict" in list(sd.keys()):
             sd = sd["state_dict"]
@@ -347,15 +358,15 @@ class DDPM(nn.Module):
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
-            extract_into_tensor(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t
-            - extract_into_tensor(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape)
-            * noise
+                extract_into_tensor(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t
+                - extract_into_tensor(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape)
+                * noise
         )
 
     def q_posterior(self, x_start, x_t, t):
         posterior_mean = (
-            extract_into_tensor(self.posterior_mean_coef1, t, x_t.shape) * x_start
-            + extract_into_tensor(self.posterior_mean_coef2, t, x_t.shape) * x_t
+                extract_into_tensor(self.posterior_mean_coef1, t, x_t.shape) * x_start
+                + extract_into_tensor(self.posterior_mean_coef2, t, x_t.shape) * x_t
         )
         posterior_variance = extract_into_tensor(self.posterior_variance, t, x_t.shape)
         posterior_log_variance_clipped = extract_into_tensor(
@@ -397,9 +408,9 @@ class DDPM(nn.Module):
         img = torch.randn(shape, device=device)
         intermediates = [img]
         for i in tqdm(
-            reversed(range(0, self.num_timesteps)),
-            desc="Sampling t",
-            total=self.num_timesteps,
+                reversed(range(0, self.num_timesteps)),
+                desc="Sampling t",
+                total=self.num_timesteps,
         ):
             img = self.p_sample(
                 img,
@@ -420,9 +431,9 @@ class DDPM(nn.Module):
     def q_sample(self, x_start, t, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
         return (
-            extract_into_tensor(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
-            + extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
-            * noise
+                extract_into_tensor(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
+                + extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
+                * noise
         )
 
     def get_loss(self, pred, target, mean=True):
@@ -444,21 +455,21 @@ class DDPM(nn.Module):
         # self.register_buffer('sqrt_alphas_cumprod', to_torch(np.sqrt(alphas_cumprod)))
         # self.register_buffer('sqrt_one_minus_alphas_cumprod', to_torch(np.sqrt(1. - alphas_cumprod)))
         return (
-            extract_into_tensor(self.sqrt_alphas_cumprod, t, x_t.shape) * x_t
-            - extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape) * v
+                extract_into_tensor(self.sqrt_alphas_cumprod, t, x_t.shape) * x_t
+                - extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape) * v
         )
 
     def predict_eps_from_z_and_v(self, x_t, t, v):
         return (
-            extract_into_tensor(self.sqrt_alphas_cumprod, t, x_t.shape) * v
-            + extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape)
-            * x_t
+                extract_into_tensor(self.sqrt_alphas_cumprod, t, x_t.shape) * v
+                + extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape)
+                * x_t
         )
 
     def get_v(self, x, noise, t):
         return (
-            extract_into_tensor(self.sqrt_alphas_cumprod, t, x.shape) * noise
-            - extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x.shape) * x
+                extract_into_tensor(self.sqrt_alphas_cumprod, t, x.shape) * noise
+                - extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x.shape) * x
         )
 
     def forward(self, x, *args, **kwargs):
@@ -508,7 +519,8 @@ class DDPM(nn.Module):
 
         return ret[k]
 
-    def _get_rows_from_list(self, samples):
+    @staticmethod
+    def _get_rows_from_list(samples):
         n_imgs_per_row = len(samples)
         denoise_grid = rearrange(samples, "n b c h w -> b n c h w")
         denoise_grid = rearrange(denoise_grid, "b n c h w -> (b n) c h w")
@@ -567,7 +579,8 @@ class DDPM(nn.Module):
         self.tracked_steps = 0
         self.param_dict = {}
 
-    def statistic_require_grad_tensor_number(self, module, name=None):
+    @staticmethod
+    def statistic_require_grad_tensor_number(module, name=None):
         requires_grad_num = 0
         total_num = 0
         require_grad_tensor = None
@@ -588,26 +601,28 @@ class LatentDiffusion(DDPM):
     """main class"""
 
     def __init__(
-        self,
-        first_stage_config,
-        cond_stage_config=None,
-        num_timesteps_cond=None,
-        cond_stage_key="image",
-        optimize_ddpm_parameter=True,
-        unconditional_prob_cfg=0.1,
-        warmup_steps=10000,
-        cond_stage_trainable=False,
-        concat_mode=True,
-        cond_stage_forward=None,
-        conditioning_key=None,
-        scale_factor=1.0,
-        batchsize=None,
-        evaluation_params={},
-        scale_by_std=False,
-        base_learning_rate=None,
-        *args,
-        **kwargs,
+            self,
+            first_stage_config,
+            cond_stage_config=None,
+            num_timesteps_cond=None,
+            cond_stage_key="image",
+            optimize_ddpm_parameter=True,
+            unconditional_prob_cfg=0.1,
+            warmup_steps=10000,
+            cond_stage_trainable=False,
+            concat_mode=True,
+            cond_stage_forward=None,
+            conditioning_key=None,
+            scale_factor=1.0,
+            batchsize=None,
+            evaluation_params=None,
+            scale_by_std=False,
+            base_learning_rate=None,
+            *args,
+            **kwargs,
     ):
+        if evaluation_params is None:
+            evaluation_params = {}
         self.learning_rate = base_learning_rate
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -699,7 +714,7 @@ class LatentDiffusion(DDPM):
         return opt
 
     def make_cond_schedule(
-        self,
+            self,
     ):
         self.cond_ids = torch.full(
             size=(self.num_timesteps,),
@@ -715,12 +730,12 @@ class LatentDiffusion(DDPM):
     def on_train_batch_start(self, batch, batch_idx):
         # only for very first batch
         if (
-            self.scale_factor == 1
-            and self.scale_by_std
-            and self.current_epoch == 0
-            and self.global_step == 0
-            and batch_idx == 0
-            and not self.restarted_from_ckpt
+                self.scale_factor == 1
+                and self.scale_by_std
+                and self.current_epoch == 0
+                and self.global_step == 0
+                and batch_idx == 0
+                and not self.restarted_from_ckpt
         ):
             # assert self.scale_factor == 1., 'rather not use custom rescaling and std-rescaling simultaneously'
             # set rescale weight to 1./std of encodings
@@ -735,13 +750,13 @@ class LatentDiffusion(DDPM):
             print("### USING STD-RESCALING ###")
 
     def register_schedule(
-        self,
-        given_betas=None,
-        beta_schedule="linear",
-        timesteps=1000,
-        linear_start=1e-4,
-        linear_end=2e-2,
-        cosine_s=8e-3,
+            self,
+            given_betas=None,
+            beta_schedule="linear",
+            timesteps=1000,
+            linear_start=1e-4,
+            linear_end=2e-2,
+            cosine_s=8e-3,
     ):
         super().register_schedule(
             given_betas, beta_schedule, timesteps, linear_start, linear_end, cosine_s
@@ -758,7 +773,8 @@ class LatentDiffusion(DDPM):
         for param in self.first_stage_model.parameters():
             param.requires_grad = False
 
-    def make_decision(self, probability):
+    @staticmethod
+    def make_decision(probability):
         if float(torch.rand(1)) < probability:
             return True
         else:
@@ -768,8 +784,8 @@ class LatentDiffusion(DDPM):
         self.cond_stage_model_metadata = {}
         for i, cond_model_key in enumerate(config.keys()):
             if (
-                "params" in config[cond_model_key]
-                and "device" in config[cond_model_key]["params"]
+                    "params" in config[cond_model_key]
+                    and "device" in config[cond_model_key]["params"]
             ):
                 config[cond_model_key]["params"]["device"] = self.device
             model = instantiate_from_config(config[cond_model_key])
@@ -819,14 +835,14 @@ class LatentDiffusion(DDPM):
         return c
 
     def get_input(
-        self,
-        batch,
-        k,
-        return_first_stage_encode=True,
-        return_decoding_output=False,
-        return_encoder_input=False,
-        return_encoder_output=False,
-        unconditional_prob_cfg=0.1,
+            self,
+            batch,
+            k,
+            return_first_stage_encode=True,
+            return_decoding_output=False,
+            return_encoder_input=False,
+            return_encoder_output=False,
+            unconditional_prob_cfg=0.1,
     ):
         x = super().get_input(batch, k)
 
@@ -841,7 +857,7 @@ class LatentDiffusion(DDPM):
         if len(self.cond_stage_model_metadata.keys()) > 0:
             unconditional_cfg = False
             if self.conditional_dry_run_finished and self.make_decision(
-                unconditional_prob_cfg
+                    unconditional_prob_cfg
             ):
                 unconditional_cfg = True
             for cond_model_key in self.cond_stage_model_metadata.keys():
@@ -917,7 +933,7 @@ class LatentDiffusion(DDPM):
         return decoding
 
     def mel_spectrogram_to_waveform(
-        self, mel, savepath=".", bs=None, name="outwav", save=True
+            self, mel, savepath=".", bs=None, name="outwav", save=True
     ):
         # Mel: [bs, 1, t-steps, fbins]
         if len(mel.size()) == 4:
@@ -933,7 +949,8 @@ class LatentDiffusion(DDPM):
         with torch.no_grad():
             return self.first_stage_model.encode(x)
 
-    def extract_possible_loss_in_cond_dict(self, cond_dict):
+    @staticmethod
+    def extract_possible_loss_in_cond_dict(cond_dict):
         # This function enable the conditional module to return loss function that can optimize them
 
         assert isinstance(cond_dict, dict)
@@ -991,15 +1008,6 @@ class LatentDiffusion(DDPM):
                 else:
                     loss = loss + additional_loss_for_cond_modules[k]
 
-        # for k,v in additional_loss_for_cond_modules.items():
-        #     self.log(
-        #         "cond_stage/"+k,
-        #         float(v),
-        #         prog_bar=True,
-        #         logger=True,
-        #         on_step=True,
-        #         on_epoch=True,
-        #     )
         if self.training:
             assert loss is not None
 
@@ -1071,16 +1079,16 @@ class LatentDiffusion(DDPM):
         return loss, loss_dict
 
     def p_mean_variance(
-        self,
-        x,
-        c,
-        t,
-        clip_denoised: bool,
-        return_codebook_ids=False,
-        quantize_denoised=False,
-        return_x0=False,
-        score_corrector=None,
-        corrector_kwargs=None,
+            self,
+            x,
+            c,
+            t,
+            clip_denoised: bool,
+            return_codebook_ids=False,
+            quantize_denoised=False,
+            return_x0=False,
+            score_corrector=None,
+            corrector_kwargs=None,
     ):
         t_in = t
         model_out = self.apply_model(x, t_in, c, return_ids=return_codebook_ids)
@@ -1117,19 +1125,19 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def p_sample(
-        self,
-        x,
-        c,
-        t,
-        clip_denoised=False,
-        repeat_noise=False,
-        return_codebook_ids=False,
-        quantize_denoised=False,
-        return_x0=False,
-        temperature=1.0,
-        noise_dropout=0.0,
-        score_corrector=None,
-        corrector_kwargs=None,
+            self,
+            x,
+            c,
+            t,
+            clip_denoised=False,
+            repeat_noise=False,
+            return_codebook_ids=False,
+            quantize_denoised=False,
+            return_x0=False,
+            temperature=1.0,
+            noise_dropout=0.0,
+            score_corrector=None,
+            corrector_kwargs=None,
     ):
         b, *_, device = *x.shape, x.device
         outputs = self.p_mean_variance(
@@ -1144,7 +1152,6 @@ class LatentDiffusion(DDPM):
             corrector_kwargs=corrector_kwargs,
         )
         if return_codebook_ids:
-            raise DeprecationWarning("Support dropped.")
             model_mean, _, model_log_variance, logits = outputs
         elif return_x0:
             model_mean, _, model_log_variance, x0 = outputs
@@ -1159,10 +1166,6 @@ class LatentDiffusion(DDPM):
             (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1))).contiguous()
         )
 
-        # if return_codebook_ids:
-        #     return model_mean + nonzero_mask * (
-        #         0.5 * model_log_variance
-        #     ).exp() * noise, logits.argmax(dim=1)
         if return_x0:
             return (
                 model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise,
@@ -1173,23 +1176,23 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def progressive_denoising(
-        self,
-        cond,
-        shape,
-        verbose=True,
-        callback=None,
-        quantize_denoised=False,
-        img_callback=None,
-        mask=None,
-        x0=None,
-        temperature=1.0,
-        noise_dropout=0.0,
-        score_corrector=None,
-        corrector_kwargs=None,
-        batch_size=None,
-        x_T=None,
-        start_T=None,
-        log_every_t=None,
+            self,
+            cond,
+            shape,
+            verbose=True,
+            callback=None,
+            quantize_denoised=False,
+            img_callback=None,
+            mask=None,
+            x0=None,
+            temperature=1.0,
+            noise_dropout=0.0,
+            score_corrector=None,
+            corrector_kwargs=None,
+            batch_size=None,
+            x_T=None,
+            start_T=None,
+            log_every_t=None,
     ):
         if not log_every_t:
             log_every_t = self.log_every_t
@@ -1267,20 +1270,20 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def p_sample_loop(
-        self,
-        cond,
-        shape,
-        return_intermediates=False,
-        x_T=None,
-        verbose=True,
-        callback=None,
-        timesteps=None,
-        quantize_denoised=False,
-        mask=None,
-        x0=None,
-        img_callback=None,
-        start_T=None,
-        log_every_t=None,
+            self,
+            cond,
+            shape,
+            return_intermediates=False,
+            x_T=None,
+            verbose=True,
+            callback=None,
+            timesteps=None,
+            quantize_denoised=False,
+            mask=None,
+            x0=None,
+            img_callback=None,
+            start_T=None,
+            log_every_t=None,
     ):
         if not log_every_t:
             log_every_t = self.log_every_t
@@ -1340,18 +1343,18 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def sample(
-        self,
-        cond,
-        batch_size=16,
-        return_intermediates=False,
-        x_T=None,
-        verbose=True,
-        timesteps=None,
-        quantize_denoised=False,
-        mask=None,
-        x0=None,
-        shape=None,
-        **kwargs,
+            self,
+            cond,
+            batch_size=16,
+            return_intermediates=False,
+            x_T=None,
+            verbose=True,
+            timesteps=None,
+            quantize_denoised=False,
+            mask=None,
+            x0=None,
+            shape=None,
+            **kwargs,
     ):
         if shape is None:
             shape = (batch_size, self.channels, self.latent_t_size, self.latent_f_size)
@@ -1402,22 +1405,22 @@ class LatentDiffusion(DDPM):
                 raise NotImplementedError
             todo_waveform = waveform[i, 0]
             todo_waveform = (
-                todo_waveform / np.max(np.abs(todo_waveform))
-            ) * 0.8  # Normalize the energy of the generation output
+                                    todo_waveform / np.max(np.abs(todo_waveform))
+                            ) * 0.8  # Normalize the energy of the generation output
             sf.write(path, todo_waveform, samplerate=self.sampling_rate)
 
     @torch.no_grad()
     def sample_log(
-        self,
-        cond,
-        batch_size,
-        ddim,
-        ddim_steps,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        use_plms=False,
-        mask=None,
-        **kwargs,
+            self,
+            cond,
+            batch_size,
+            ddim,
+            ddim_steps,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            use_plms=False,
+            mask=None,
+            **kwargs,
     ):
         if mask is not None:
             shape = (self.channels, mask.size()[-2], mask.size()[-1])
@@ -1467,16 +1470,16 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def generate_batch(
-        self,
-        batch,
-        ddim_steps=200,
-        ddim_eta=1.0,
-        x_T=None,
-        n_gen=1,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        use_plms=False,
-        **kwargs,
+            self,
+            batch,
+            ddim_steps=200,
+            ddim_eta=1.0,
+            x_T=None,
+            n_gen=1,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            use_plms=False,
+            **kwargs,
     ):
         # Generate n_gen times and select the best
         # Batch: audio, text, fnames
@@ -1551,7 +1554,8 @@ class LatentDiffusion(DDPM):
 
             return waveform
 
-    def _locate_cutoff_freq(self, stft, percentile=0.985):
+    @staticmethod
+    def _locate_cutoff_freq(stft, percentile=0.985):
         def _find_cutoff(x, percentile=0.95):
             percentile = x[-1] * percentile
             for i in range(1, x.shape[0]):
@@ -1595,7 +1599,8 @@ class LatentDiffusion(DDPM):
             out_batch[i] = out_renewed
         return out_batch
 
-    def _find_cutoff_np(self, x, threshold=0.95):
+    @staticmethod
+    def _find_cutoff_np(x, threshold=0.95):
         threshold = x[-1] * threshold
         for i in range(1, x.shape[0]):
             if x[-i] < threshold:
@@ -1619,12 +1624,12 @@ class DiffusionWrapper(nn.Module):
 
         for key in self.conditioning_key:
             if (
-                "concat" in key
-                or "crossattn" in key
-                or "hybrid" in key
-                or "film" in key
-                or "noncond" in key
-                or "ignore" in key
+                    "concat" in key
+                    or "crossattn" in key
+                    or "hybrid" in key
+                    or "film" in key
+                    or "noncond" in key
+                    or "ignore" in key
             ):
                 continue
             else:
@@ -1632,7 +1637,9 @@ class DiffusionWrapper(nn.Module):
 
         self.being_verbosed_once = False
 
-    def forward(self, x, t, cond_dict: dict = {}):
+    def forward(self, x, t, cond_dict=None):
+        if cond_dict is None:
+            cond_dict = {}
         x = x.contiguous()
         t = t.contiguous()
 
@@ -1666,8 +1673,8 @@ class DiffusionWrapper(nn.Module):
                             ]  # crossattn_audiomae_pooled: torch.Size([12, 128, 768])
                 else:
                     assert len(cond_dict[key]) == 2, (
-                        "The context condition for %s you returned should have two element, one context one mask"
-                        % (key)
+                            "The context condition for %s you returned should have two element, one context one mask"
+                            % key
                     )
                     context, attn_mask = cond_dict[key]
 
@@ -1676,7 +1683,7 @@ class DiffusionWrapper(nn.Module):
                 attn_mask_list.append(attn_mask)
 
             elif (
-                "noncond" in key
+                    "noncond" in key
             ):  # If you use loss function in the conditional module, include the keyword "noncond" in the return dictionary
                 continue
             else:
@@ -1686,16 +1693,3 @@ class DiffusionWrapper(nn.Module):
             xc, t, context_list=context_list, y=y, context_attn_mask_list=attn_mask_list
         )
         return out
-
-
-if __name__ == "__main__":
-    import yaml
-
-    model_config = "/mnt/fast/nobackup/users/hl01486/projects/general_audio_generation/stable-diffusion/models/ldm/text2img256/config.yaml"
-    model_config = yaml.load(open(model_config, "r"), Loader=yaml.FullLoader)
-
-    latent_diffusion = LatentDiffusion(**model_config["model"]["params"])
-
-    import ipdb
-
-    ipdb.set_trace()

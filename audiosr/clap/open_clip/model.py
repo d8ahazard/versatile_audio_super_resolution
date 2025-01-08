@@ -22,8 +22,10 @@ from transformers import BertModel, RobertaModel, BartModel, RobertaConfig
 
 
 class MLPLayers(nn.Module):
-    def __init__(self, units=[512, 512, 512], nonlin=nn.ReLU(), dropout=0.1):
+    def __init__(self, units=None, nonlin=nn.ReLU(), dropout=0.1):
         super(MLPLayers, self).__init__()
+        if units is None:
+            units = [512, 512, 512]
         self.nonlin = nonlin
         self.dropout = dropout
 
@@ -102,11 +104,11 @@ class Bottleneck(nn.Module):
 
 class AttentionPool2d(nn.Module):
     def __init__(
-        self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None
+            self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None
     ):
         super().__init__()
         self.positional_embedding = nn.Parameter(
-            torch.randn(spacial_dim**2 + 1, embed_dim) / embed_dim**0.5
+            torch.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5
         )
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.q_proj = nn.Linear(embed_dim, embed_dim)
@@ -197,7 +199,7 @@ class ModifiedResNet(nn.Module):
 
     def init_parameters(self):
         if self.attnpool is not None:
-            std = self.attnpool.c_proj.in_features**-0.5
+            std = self.attnpool.c_proj.in_features ** -0.5
             nn.init.normal_(self.attnpool.q_proj.weight, std=std)
             nn.init.normal_(self.attnpool.k_proj.weight, std=std)
             nn.init.normal_(self.attnpool.v_proj.weight, std=std)
@@ -210,7 +212,7 @@ class ModifiedResNet(nn.Module):
 
     def lock(self, unlocked_groups=0, freeze_bn_stats=False):
         assert (
-            unlocked_groups == 0
+                unlocked_groups == 0
         ), "partial locking not currently supported for this model"
         for param in self.parameters():
             param.requires_grad = False
@@ -249,7 +251,8 @@ class LayerNorm(nn.LayerNorm):
 
 class QuickGELU(nn.Module):
     # NOTE This is slower than nn.GELU or nn.SiLU and uses more GPU memory
-    def forward(self, x: torch.Tensor):
+    @staticmethod
+    def forward(x: torch.Tensor):
         return x * torch.sigmoid(1.702 * x)
 
 
@@ -281,7 +284,7 @@ class ResidualAttentionBlock(nn.Module):
 
 class Transformer(nn.Module):
     def __init__(
-        self, width: int, layers: int, heads: int, act_layer: Callable = nn.GELU
+            self, width: int, layers: int, heads: int, act_layer: Callable = nn.GELU
     ):
         super().__init__()
         self.width = width
@@ -301,14 +304,14 @@ class Transformer(nn.Module):
 
 class VisualTransformer(nn.Module):
     def __init__(
-        self,
-        image_size: int,
-        patch_size: int,
-        width: int,
-        layers: int,
-        heads: int,
-        output_dim: int,
-        act_layer: Callable = nn.GELU,
+            self,
+            image_size: int,
+            patch_size: int,
+            width: int,
+            layers: int,
+            heads: int,
+            output_dim: int,
+            act_layer: Callable = nn.GELU,
     ):
         super().__init__()
         self.image_size = image_size
@@ -321,7 +324,7 @@ class VisualTransformer(nn.Module):
             bias=False,
         )
 
-        scale = width**-0.5
+        scale = width ** -0.5
         self.class_embedding = nn.Parameter(scale * torch.randn(width))
         self.positional_embedding = nn.Parameter(
             scale * torch.randn((image_size // patch_size) ** 2 + 1, width)
@@ -335,7 +338,7 @@ class VisualTransformer(nn.Module):
 
     def lock(self, unlocked_groups=0, freeze_bn_stats=False):
         assert (
-            unlocked_groups == 0
+                unlocked_groups == 0
         ), "partial locking not currently supported for this model"
         for param in self.parameters():
             param.requires_grad = False
@@ -375,18 +378,10 @@ class CLAPVisionCfg:
     width: int = 768
     patch_size: int = 16
     image_size: Union[Tuple[int, int], int] = 224
-    timm_model_name: str = (
-        None  # a valid model name overrides layers, width, patch_size
-    )
-    timm_model_pretrained: bool = (
-        False  # use (imagenet) pretrained weights for named model
-    )
-    timm_pool: str = (
-        "avg"  # feature pooling for timm model ('abs_attn', 'rot_attn', 'avg', '')
-    )
-    timm_proj: str = (
-        "linear"  # linear projection for timm model output ('linear', 'mlp', '')
-    )
+    timm_model_name: str = None
+    timm_model_pretrained: bool = False
+    timm_pool: str = "avg"
+    timm_proj: str = "linear"
 
 
 # Audio Config Class
@@ -418,15 +413,15 @@ class CLAPTextCfg:
 
 class CLAP(nn.Module):
     def __init__(
-        self,
-        embed_dim: int,
-        audio_cfg: CLAPAudioCfp,
-        text_cfg: CLAPTextCfg,
-        quick_gelu: bool = False,
-        enable_fusion: bool = False,
-        fusion_type: str = "None",
-        joint_embed_shape: int = 512,
-        mlp_act: str = "relu",
+            self,
+            embed_dim: int,
+            audio_cfg: CLAPAudioCfp,
+            text_cfg: CLAPTextCfg,
+            quick_gelu: bool = False,
+            enable_fusion: bool = False,
+            fusion_type: str = "None",
+            joint_embed_shape: int = 512,
+            mlp_act: str = "relu",
     ):
         super().__init__()
         if isinstance(audio_cfg, dict):
@@ -577,22 +572,16 @@ class CLAP(nn.Module):
         if self.text_branch_type == "transformer":
             nn.init.normal_(self.token_embedding.weight, std=0.02)
             nn.init.normal_(self.positional_embedding, std=0.01)
-            proj_std = (self.text_branch.width**-0.5) * (
-                (2 * self.text_branch.layers) ** -0.5
+            proj_std = (self.text_branch.width ** -0.5) * (
+                    (2 * self.text_branch.layers) ** -0.5
             )
-            attn_std = self.text_branch.width**-0.5
+            attn_std = self.text_branch.width ** -0.5
             fc_std = (2 * self.text_branch.width) ** -0.5
             for block in self.text_branch.resblocks:
                 nn.init.normal_(block.attn.in_proj_weight, std=attn_std)
                 nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
                 nn.init.normal_(block.mlp.c_fc.weight, std=fc_std)
                 nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
-        if self.text_branch_type == "bert" or self.text_branch_type == "roberta":
-            self.text_branch.embeddings.word_embeddings.weight.shape[-1]
-        elif self.text_branch_type == "bart":
-            self.text_branch.shared.weight.shape[-1]
-        else:
-            self.text_branch.width
         nn.init.constant_(self.logit_scale_a, np.log(1 / 0.07))
         nn.init.constant_(self.logit_scale_t, np.log(1 / 0.07))
 
@@ -616,16 +605,6 @@ class CLAP(nn.Module):
             audio, mixup_lambda=None, device=device
         )  # mix lambda needs to add
 
-    # def list_of_dict_of_tensor2dict_of_tensor(self, x, device):
-    #     tmp = {}
-    #     for k in x[0].keys():
-    #         tmp[k] = []
-    #         for i in range(len(x)):
-    #             tmp[k].append(x[i][k][:77])
-    #     for k in x[0].keys():
-    #         tmp[k] = torch.tensor(tmp[k]).to(device=device, non_blocking=True)
-    #     return tmp
-
     def encode_text(self, text, device):
         if self.text_branch_type == "transformer":
             text = text.to(device=device, non_blocking=True)
@@ -637,12 +616,8 @@ class CLAP(nn.Module):
             x = x.permute(1, 0, 2)  # LND -> NLD
             x = self.ln_final(x)
 
-            # x.shape = [batch_size, n_ctx, transformer.width]
-            # take features from the eot embedding (eot_token is the highest number in each sequence)
             x = self.text_projection(x[torch.arange(x.shape[0]), text.argmax(dim=-1)])
         elif self.text_branch_type == "bert":
-            # text = self.list_of_dict_of_tensor2dict_of_tensor(text, device)
-            # text = BatchEncoding(text)
             x = self.text_branch(
                 input_ids=text["input_ids"].to(device=device, non_blocking=True),
                 attention_mask=text["attention_mask"].to(
@@ -662,15 +637,17 @@ class CLAP(nn.Module):
             )["pooler_output"]
             x = self.text_projection(x)
         elif self.text_branch_type == "bart":
-            x = torch.mean(
-                self.text_branch(
-                    input_ids=text["input_ids"].to(device=device, non_blocking=True),
-                    attention_mask=text["attention_mask"].to(
-                        device=device, non_blocking=True
-                    ),
-                )["encoder_last_hidden_state"],
-                axis=1,
-            )
+            last_state = self.text_branch(
+                input_ids=text["input_ids"].to(device=device, non_blocking=True),
+                attention_mask=text["attention_mask"].to(
+                    device=device, non_blocking=True
+                ),
+            )["encoder_last_hidden_state"]
+            # Raise an error if last_state is not a Tensor
+            if not isinstance(last_state, torch.Tensor):
+                logging.error(f"last_state is not a Tensor. Got {type(last_state)}")
+                raise RuntimeError(f"last_state is not a Tensor. Got {type(last_state)}")
+            x = torch.mean(last_state, axis=1)
             x = self.text_projection(x)
         else:
             logging.error(f"Model type {self.text_branch_type} not found")
@@ -707,14 +684,10 @@ class CLAP(nn.Module):
         audio_features = F.normalize(audio_features, dim=-1)
 
         text_features = self.encode_text(text, device=device)
-        # print("text_features", text_features)
-        # print("text_features.shape", text_features.shape)
-        # print("text_features.type", type(text_features))
         text_features = F.normalize(text_features, dim=-1)
 
         audio_features_mlp = self.audio_transform(audio_features)
         text_features_mlp = self.text_transform(text_features)
-        # Four outputs: audio features (basic & MLP), text features (basic & MLP)
         return (
             audio_features,
             text_features,
@@ -777,63 +750,63 @@ class CLAP(nn.Module):
 
         return audio_embeds
 
-    def audio_infer(self, audio, hopsize=None, device=None):
-        """Forward one audio and produce the audio embedding
-
-        Parameters
-        ----------
-        audio:  (audio_length)
-            the time-domain audio input, notice that it must be only one input
-        hopsize: int
-            the overlap hopsize as the sliding window
-
-        Returns
-        ----------
-        output_dict: {
-            key: [n, (embedding_shape)] if "HTS-AT"
-            or
-            key: [(embedding_shape)] if "PANN"
-        }
-            the list of key values of the audio branch
-
-        """
-
-        assert not self.training, "the inference mode must be run at eval stage"
-        output_dict = {}
-        # PANN
-        if self.audio_cfg.model_type == "PANN":
-            audio_input = audio.unsqueeze(dim=0)
-            output_dict[key] = self.encode_audio(audio_input, device=device)[
-                key
-            ].squeeze(dim=0)
-        elif self.audio_cfg.model_type == "HTSAT":
-            # repeat
-            audio_len = len(audio)
-            k = self.audio_cfg.clip_samples // audio_len
-            if k > 1:
-                audio = audio.repeat(k)
-                audio_len = len(audio)
-
-            if hopsize is None:
-                hopsize = min(hopsize, audio_len)
-
-            if audio_len > self.audio_cfg.clip_samples:
-                audio_input = [
-                    audio[pos : pos + self.audio_cfg.clip_samples].clone()
-                    for pos in range(
-                        0, audio_len - self.audio_cfg.clip_samples, hopsize
-                    )
-                ]
-                audio_input.append(audio[-self.audio_cfg.clip_samples :].clone())
-                audio_input = torch.stack(audio_input)
-                output_dict[key] = self.encode_audio(audio_input, device=device)[key]
-            else:
-                audio_input = audio.unsqueeze(dim=0)
-                output_dict[key] = self.encode_audio(audio_input, device=device)[
-                    key
-                ].squeeze(dim=0)
-
-        return output_dict
+    # def audio_infer(self, audio, hopsize=None, device=None):
+    #     """Forward one audio and produce the audio embedding
+    #
+    #     Parameters
+    #     ----------
+    #     audio:  (audio_length)
+    #         the time-domain audio input, notice that it must be only one input
+    #     hopsize: int
+    #         the overlap hopsize as the sliding window
+    #
+    #     Returns
+    #     ----------
+    #     output_dict: {
+    #         key: [n, (embedding_shape)] if "HTS-AT"
+    #         or
+    #         key: [(embedding_shape)] if "PANN"
+    #     }
+    #         the list of key values of the audio branch
+    #
+    #     """
+    #
+    #     assert not self.training, "the inference mode must be run at eval stage"
+    #     output_dict = {}
+    #     # PANN
+    #     if self.audio_cfg.model_type == "PANN":
+    #         audio_input = audio.unsqueeze(dim=0)
+    #         output_dict[key] = self.encode_audio(audio_input, device=device)[
+    #             key
+    #         ].squeeze(dim=0)
+    #     elif self.audio_cfg.model_type == "HTSAT":
+    #         # repeat
+    #         audio_len = len(audio)
+    #         k = self.audio_cfg.clip_samples // audio_len
+    #         if k > 1:
+    #             audio = audio.repeat(k)
+    #             audio_len = len(audio)
+    #
+    #         if hopsize is None:
+    #             hopsize = min(hopsize, audio_len)
+    #
+    #         if audio_len > self.audio_cfg.clip_samples:
+    #             audio_input = [
+    #                 audio[pos : pos + self.audio_cfg.clip_samples].clone()
+    #                 for pos in range(
+    #                     0, audio_len - self.audio_cfg.clip_samples, hopsize
+    #                 )
+    #             ]
+    #             audio_input.append(audio[-self.audio_cfg.clip_samples :].clone())
+    #             audio_input = torch.stack(audio_input)
+    #             output_dict[key] = self.encode_audio(audio_input, device=device)[key]
+    #         else:
+    #             audio_input = audio.unsqueeze(dim=0)
+    #             output_dict[key] = self.encode_audio(audio_input, device=device)[
+    #                 key
+    #             ].squeeze(dim=0)
+    #
+    #     return output_dict
 
 
 def convert_weights_to_fp16(model: nn.Module):
@@ -867,22 +840,12 @@ def convert_weights_to_fp16(model: nn.Module):
 
 # Ignore the state dict of the vision part
 def build_model_from_openai_state_dict(
-    state_dict: dict, model_cfg, enable_fusion: bool = False, fusion_type: str = "None"
+        state_dict: dict, model_cfg, enable_fusion: bool = False, fusion_type: str = "None"
 ):
     embed_dim = model_cfg["embed_dim"]
     audio_cfg = model_cfg["audio_cfg"]
     text_cfg = model_cfg["text_cfg"]
-    state_dict["positional_embedding"].shape[0]
-    state_dict["token_embedding.weight"].shape[0]
     transformer_width = state_dict["ln_final.weight"].shape[0]
-    transformer_width // 64
-    transformer_layers = len(
-        set(
-            k.split(".")[2]
-            for k in state_dict
-            if k.startswith(f"transformer.resblocks")
-        )
-    )
 
     audio_cfg = CLAPAudioCfp(**audio_cfg)
     text_cfg = CLAPTextCfg(**text_cfg)
@@ -906,8 +869,6 @@ def build_model_from_openai_state_dict(
     for key in ["logit_scale", "input_resolution", "context_length", "vocab_size"]:
         state_dict.pop(key, None)
 
-    # not use fp16
-    # convert_weights_to_fp16(model)
     model.load_state_dict(state_dict, strict=False)
     return model.eval()
 

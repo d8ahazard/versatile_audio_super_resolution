@@ -16,7 +16,8 @@ class DAF(nn.Module):
     def __init__(self):
         super(DAF, self).__init__()
 
-    def forward(self, x, residual):
+    @staticmethod
+    def forward(x, residual):
         return x + residual
 
 

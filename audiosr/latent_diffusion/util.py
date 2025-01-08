@@ -23,11 +23,11 @@ CACHE = {
 }
 
 CACHE["get_vits_phoneme_ids"]["symbols"] = (
-    [CACHE["get_vits_phoneme_ids"]["_pad"]]
-    + list(CACHE["get_vits_phoneme_ids"]["_punctuation"])
-    + list(CACHE["get_vits_phoneme_ids"]["_letters"])
-    + list(CACHE["get_vits_phoneme_ids"]["_letters_ipa"])
-    + list(CACHE["get_vits_phoneme_ids"]["_special"])
+        [CACHE["get_vits_phoneme_ids"]["_pad"]]
+        + list(CACHE["get_vits_phoneme_ids"]["_punctuation"])
+        + list(CACHE["get_vits_phoneme_ids"]["_letters"])
+        + list(CACHE["get_vits_phoneme_ids"]["_letters_ipa"])
+        + list(CACHE["get_vits_phoneme_ids"]["_special"])
 )
 CACHE["get_vits_phoneme_ids"]["_symbol_to_id"] = {
     s: i for i, s in enumerate(CACHE["get_vits_phoneme_ids"]["symbols"])
@@ -73,7 +73,7 @@ def log_txt_as_img(wh, xc, size=10):
         font = ImageFont.truetype("data/DejaVuSans.ttf", size=size)
         nc = int(40 * (wh[0] / 256))
         lines = "\n".join(
-            xc[bi][start : start + nc] for start in range(0, len(xc[bi]), nc)
+            xc[bi][start: start + nc] for start in range(0, len(xc[bi]), nc)
         )
 
         try:
@@ -165,12 +165,12 @@ def _do_parallel_data_prefetch(func, Q, data, idx, idx_to_fn=False):
 
 
 def parallel_data_prefetch(
-    func: callable,
-    data,
-    n_proc,
-    target_data_type="ndarray",
-    cpu_intensive=True,
-    use_worker_id=False,
+        func: callable,
+        data,
+        n_proc,
+        target_data_type="ndarray",
+        cpu_intensive=True,
+        use_worker_id=False,
 ):
     # if target_data_type not in ["ndarray", "list"]:
     #     raise ValueError(
@@ -214,7 +214,7 @@ def parallel_data_prefetch(
         arguments = [
             [func, Q, part, i, use_worker_id]
             for i, part in enumerate(
-                [data[i : i + step] for i in range(0, len(data), step)]
+                [data[i: i + step] for i in range(0, len(data), step)]
             )
         ]
     processes = []

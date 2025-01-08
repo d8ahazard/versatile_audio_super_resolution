@@ -20,7 +20,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """Vision Transformer with support for global average pooling"""
 
     def __init__(
-        self, global_pool=False, mask_2d=True, use_custom_patch=False, **kwargs
+            self, global_pool=False, mask_2d=True, use_custom_patch=False, **kwargs
     ):
         super(VisionTransformer, self).__init__(**kwargs)
 
@@ -56,7 +56,8 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
         return outcome
 
-    def random_masking(self, x, mask_ratio):
+    @staticmethod
+    def random_masking(x, mask_ratio):
         """
         Perform per-sample random masking by per-sample shuffling.
         Per-sample shuffling is done by argsort random noise.

@@ -465,16 +465,14 @@ def extract_drum_beat(config, dl_output, metadata):
         x - random_start_sample
         for x in metadata["beat"]
         if (
-            x - random_start_sample >= 0
-            and x - random_start_sample <= original_segment_length_before_resample
+                0 <= x - random_start_sample <= original_segment_length_before_resample
         )
     ]
     downbeat = [
         x - random_start_sample
         for x in metadata["downbeat"]
         if (
-            x - random_start_sample >= 0
-            and x - random_start_sample <= original_segment_length_before_resample
+                0 <= x - random_start_sample <= original_segment_length_before_resample
         )
     ]
 

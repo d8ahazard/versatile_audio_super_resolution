@@ -1,6 +1,6 @@
 import torch
 
-import hifigan as hifigan
+import audiosr.hifigan as hifigan
 
 
 def get_vocoder_config():
@@ -76,8 +76,8 @@ def get_available_checkpoint_keys(model, ckpt):
     new_state_dict = {}
     for k in state_dict.keys():
         if (
-            k in current_state_dict.keys()
-            and current_state_dict[k].size() == state_dict[k].size()
+                k in current_state_dict.keys()
+                and current_state_dict[k].size() == state_dict[k].size()
         ):
             new_state_dict[k] = state_dict[k]
         else:
@@ -115,7 +115,7 @@ def get_vocoder(config, device, mel_bins):
             vocoder = torch.hub.load(
                 "descriptinc/melgan-neurips", "load_melgan", "linda_johnson"
             )
-        #elif speaker == "universal":
+        # elif speaker == "universal":
         else:
             vocoder = torch.hub.load(
                 "descriptinc/melgan-neurips", "load_melgan", "multi_speaker"

@@ -1,6 +1,6 @@
 import hashlib
 import os
-import urllib
+import urllib.request
 import warnings
 
 from tqdm import tqdm

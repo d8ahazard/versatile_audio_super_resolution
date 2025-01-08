@@ -125,7 +125,7 @@ class Generator(torch.nn.Module):
             self.ups.append(
                 weight_norm(
                     ConvTranspose1d(
-                        h.upsample_initial_channel // (2**i),
+                        h.upsample_initial_channel // (2 ** i),
                         h.upsample_initial_channel // (2 ** (i + 1)),
                         k,
                         u,
@@ -138,7 +138,7 @@ class Generator(torch.nn.Module):
         for i in range(len(self.ups)):
             ch = h.upsample_initial_channel // (2 ** (i + 1))
             for j, (k, d) in enumerate(
-                zip(h.resblock_kernel_sizes, h.resblock_dilation_sizes)
+                    zip(h.resblock_kernel_sizes, h.resblock_dilation_sizes)
             ):
                 self.resblocks.append(resblock(h, ch, k, d))
 

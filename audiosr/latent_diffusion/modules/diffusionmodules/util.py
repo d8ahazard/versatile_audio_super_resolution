@@ -14,23 +14,23 @@ import torch.nn as nn
 import numpy as np
 from einops import repeat
 
-from latent_diffusion.util import instantiate_from_config
+from audiosr.latent_diffusion.util import instantiate_from_config
 
 
 def make_beta_schedule(
-    schedule, n_timestep, linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3
+        schedule, n_timestep, linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3
 ):
     if schedule == "linear":
         betas = (
-            torch.linspace(
-                linear_start**0.5, linear_end**0.5, n_timestep, dtype=torch.float64
-            )
-            ** 2
+                torch.linspace(
+                    linear_start ** 0.5, linear_end ** 0.5, n_timestep, dtype=torch.float64
+                )
+                ** 2
         )
 
     elif schedule == "cosine":
         timesteps = (
-            torch.arange(n_timestep + 1, dtype=torch.float64) / n_timestep + cosine_s
+                torch.arange(n_timestep + 1, dtype=torch.float64) / n_timestep + cosine_s
         )
         alphas = timesteps / (1 + cosine_s) * np.pi / 2
         alphas = torch.cos(alphas).pow(2)
@@ -44,8 +44,8 @@ def make_beta_schedule(
         )
     elif schedule == "sqrt":
         betas = (
-            torch.linspace(linear_start, linear_end, n_timestep, dtype=torch.float64)
-            ** 0.5
+                torch.linspace(linear_start, linear_end, n_timestep, dtype=torch.float64)
+                ** 0.5
         )
     else:
         raise ValueError(f"schedule '{schedule}' unknown.")
@@ -53,14 +53,14 @@ def make_beta_schedule(
 
 
 def make_ddim_timesteps(
-    ddim_discr_method, num_ddim_timesteps, num_ddpm_timesteps, verbose=True
+        ddim_discr_method, num_ddim_timesteps, num_ddpm_timesteps, verbose=True
 ):
     if ddim_discr_method == "uniform":
         c = num_ddpm_timesteps // num_ddim_timesteps
         ddim_timesteps = np.asarray(list(range(0, num_ddpm_timesteps, c)))
     elif ddim_discr_method == "quad":
         ddim_timesteps = (
-            (np.linspace(0, np.sqrt(num_ddpm_timesteps * 0.8), num_ddim_timesteps)) ** 2
+                (np.linspace(0, np.sqrt(num_ddpm_timesteps * 0.8), num_ddim_timesteps)) ** 2
         ).astype(int)
     else:
         raise NotImplementedError(
@@ -232,7 +232,8 @@ def normalization(channels):
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
-    def forward(self, x):
+    @staticmethod
+    def forward(x):
         return x * torch.sigmoid(x)
 
 

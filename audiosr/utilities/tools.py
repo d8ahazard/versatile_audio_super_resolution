@@ -144,7 +144,7 @@ class KeyNotFoundError(Exception):
 
 
 def retrieve(
-    list_or_dict, key, splitval="/", default=None, expand=True, pass_success=False
+        list_or_dict, key, splitval="/", default=None, expand=True, pass_success=False
 ):
     """Given a nested list or dict return the desired value at key expanding
     callable nodes if necessary and :attr:`expand` is ``True``. The expansion
@@ -274,7 +274,7 @@ def to_device(data, device):
         texts = torch.from_numpy(texts).long().to(device)
         src_lens = torch.from_numpy(src_lens).to(device)
 
-        return (ids, raw_texts, speakers, texts, src_lens, max_src_len)
+        return ids, raw_texts, speakers, texts, src_lens, max_src_len
 
 
 def log(logger, step=None, fig=None, audio=None, sampling_rate=22050, tag=""):
@@ -324,7 +324,7 @@ def expand(values, durations):
 
 
 def synth_one_sample_val(
-    targets, predictions, vocoder, model_config, preprocess_config
+        targets, predictions, vocoder, model_config, preprocess_config
 ):
     index = np.random.choice(list(np.arange(targets[6].size(0))))
 
@@ -350,7 +350,7 @@ def synth_one_sample_val(
         energy = predictions[3][index, :mel_len].detach().cpu().numpy()
 
     with open(
-        os.path.join(preprocess_config["path"]["preprocessed_path"], "stats.json")
+            os.path.join(preprocess_config["path"]["preprocessed_path"], "stats.json")
     ) as f:
         stats = json.load(f)
         stats = stats["pitch"] + stats["energy"][:2]
@@ -383,13 +383,13 @@ def synth_one_sample_val(
             mel_target.unsqueeze(0),
             vocoder,
             model_config,
-            #preprocess_config,
+            # preprocess_config,
         )[0]
         wav_prediction = vocoder_infer(
             postnet_mel_prediction.unsqueeze(0),
             vocoder,
             model_config,
-            #preprocess_config,
+            # preprocess_config,
         )[0]
     else:
         wav_reconstruction = wav_prediction = None
@@ -439,7 +439,7 @@ def synth_samples(targets, predictions, vocoder, model_config, preprocess_config
             energy = predictions[3][i, :mel_len].detach().cpu().numpy()
         # import ipdb; ipdb.set_trace()
         with open(
-            os.path.join(preprocess_config["path"]["preprocessed_path"], "stats.json")
+                os.path.join(preprocess_config["path"]["preprocessed_path"], "stats.json")
         ) as f:
             stats = json.load(f)
             stats = stats["pitch"] + stats["energy"][:2]
@@ -449,7 +449,7 @@ def synth_samples(targets, predictions, vocoder, model_config, preprocess_config
                 (mel_prediction.cpu().numpy(), pitch, energy),
             ],
             stats,
-            #["Synthetized Spectrogram by PostNet"],
+            # ["Synthetized Spectrogram by PostNet"],
         )
         # np.save("{}_postnet.npy".format(basename), mel_prediction.cpu().numpy())
         plt.savefig(os.path.join(path, "{}_postnet_2.png".format(basename)))

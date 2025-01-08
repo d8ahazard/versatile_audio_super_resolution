@@ -37,7 +37,7 @@ dataset_split = {
 }
 
 
-def freeze_batch_norm_2d(module, module_match={}, name=""):
+def freeze_batch_norm_2d(module, module_match=None, name=""):
     """
     Converts all `BatchNorm2d` and `SyncBatchNorm` layers of provided module into `FrozenBatchNorm2d`. If `module` is
     itself an instance of either `BatchNorm2d` or `SyncBatchNorm`, it is converted into `FrozenBatchNorm2d` and
@@ -53,12 +53,14 @@ def freeze_batch_norm_2d(module, module_match={}, name=""):
 
     Inspired by https://github.com/pytorch/pytorch/blob/a5895f85be0f10212791145bfedc0261d364f103/torch/nn/modules/batchnorm.py#L762
     """
+    if module_match is None:
+        module_match = {}
     res = module
     is_match = True
     if module_match:
         is_match = name in module_match
     if is_match and isinstance(
-        module, (nn.modules.batchnorm.BatchNorm2d, nn.modules.batchnorm.SyncBatchNorm)
+            module, (nn.modules.batchnorm.BatchNorm2d, nn.modules.batchnorm.SyncBatchNorm)
     ):
         res = FrozenBatchNorm2d(module.num_features)
         res.num_features = module.num_features
@@ -89,7 +91,7 @@ def exist(dataset_name, dataset_type):
 
 
 def get_tar_path_from_dataset_name(
-    dataset_names, dataset_types, islocal, dataset_path, proportion=1, full_dataset=None
+        dataset_names, dataset_types, islocal, dataset_path, proportion=1, full_dataset=None
 ):
     """
     Get tar path from dataset name and type
@@ -175,8 +177,8 @@ def do_mixup(x, mixup_lambda):
       out: (batch_size, ...)
     """
     out = (
-        x.transpose(0, -1) * mixup_lambda
-        + torch.flip(x, dims=[0]).transpose(0, -1) * (1 - mixup_lambda)
+            x.transpose(0, -1) * mixup_lambda
+            + torch.flip(x, dims=[0]).transpose(0, -1) * (1 - mixup_lambda)
     ).transpose(0, -1)
     return out
 
@@ -229,7 +231,9 @@ def pad_framewise_output(framewise_output, frames_num):
 #     logging.info("Load Data Succeed...............")
 
 
-def save_to_dict(s, o_={}):
+def save_to_dict(s, o_=None):
+    if o_ is None:
+        o_ = {}
     sp = s.split(": ")
     o_.update({sp[0]: float(sp[1])})
     return o_
@@ -273,22 +277,22 @@ def get_data_from_log(txt_path):
     return train_data, val_data
 
 
-def save_p(obj, filename):
-    import pickle
-
-    try:
-        from deepdiff import DeepDiff
-    except:
-        os.system("pip install deepdiff")
-        from deepdiff import DeepDiff
-    with open(filename, "wb") as file:
-        pickle.dump(obj, file, protocol=pickle.HIGHEST_PROTOCOL)  # highest protocol
-    with open(filename, "rb") as file:
-        z = pickle.load(file)
-    assert (
-        DeepDiff(obj, z, ignore_string_case=True) == {}
-    ), "there is something wrong with the saving process"
-    return
+# def save_p(obj, filename):
+#     import pickle
+#
+#     try:
+#         from deepdiff import DeepDiff
+#     except:
+#         os.system("pip install deepdiff")
+#         from deepdiff import DeepDiff
+#     with open(filename, "wb") as file:
+#         pickle.dump(obj, file, protocol=pickle.HIGHEST_PROTOCOL)  # highest protocol
+#     with open(filename, "rb") as file:
+#         z = pickle.load(file)
+#     assert (
+#         DeepDiff(obj, z, ignore_string_case=True) == {}
+#     ), "there is something wrong with the saving process"
+#     return
 
 
 def load_p(filename):

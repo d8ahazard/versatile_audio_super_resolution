@@ -15,11 +15,13 @@ import torch
 import torch.nn as nn
 
 from timm.models.vision_transformer import Block
-from latent_diffusion.modules.audiomae.util.pos_embed import (
+
+from audiosr.clap.open_clip.htsat import SwinTransformerBlock
+from audiosr.latent_diffusion.modules.audiomae.util.pos_embed import (
     get_2d_sincos_pos_embed,
     get_2d_sincos_pos_embed_flexible,
 )
-from latent_diffusion.modules.audiomae.util.patch_embed import (
+from audiosr.latent_diffusion.modules.audiomae.util.patch_embed import (
     PatchEmbed_new,
     PatchEmbed_org,
 )
@@ -241,7 +243,8 @@ class MaskedAutoencoderViT(nn.Module):
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    @staticmethod
+    def _init_weights(m):
         if isinstance(m, nn.Linear):
             # we use xavier_uniform following official JAX ViT:
             torch.nn.init.xavier_uniform_(m.weight)
@@ -299,7 +302,8 @@ class MaskedAutoencoderViT(nn.Module):
         specs = x.reshape(shape=(x.shape[0], 1, h * p, w * p))
         return specs
 
-    def random_masking(self, x, mask_ratio):
+    @staticmethod
+    def random_masking(x, mask_ratio):
         """
         Perform per-sample random masking by per-sample shuffling.
         Per-sample shuffling is done by argsort random noise.

@@ -1,6 +1,4 @@
-import math
 import torch
-from torch.nn import functional as F
 
 
 def sequence_mask(length, max_length=None):

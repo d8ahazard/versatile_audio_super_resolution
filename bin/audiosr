@@ -43,7 +43,7 @@ parser.add_argument(
     required=False,
     help="The checkpoint you gonna use",
     default="basic",
-    choices=["basic","speech"]
+    choices=["basic", "speech"]
 )
 
 parser.add_argument(
@@ -92,23 +92,23 @@ args = parser.parse_args()
 torch.set_float32_matmul_precision("high")
 save_path = os.path.join(args.save_path, get_time())
 
-assert args.input_file_list is not None or args.input_audio_file is not None,"Please provide either a list of audio files or a single audio file"
+assert args.input_file_list is not None or args.input_audio_file is not None, "Please provide either a list of audio files or a single audio file"
 
 input_file = args.input_audio_file
 random_seed = args.seed
-sample_rate=48000
-latent_t_per_second=12.8
+sample_rate = 48000
+latent_t_per_second = 12.8
 guidance_scale = args.guidance_scale
 
 os.makedirs(save_path, exist_ok=True)
 audiosr = build_model(model_name=args.model_name, device=args.device)
 
-if(args.input_file_list):
+if args.input_file_list:
     print("Generate audio based on the text prompts in %s" % args.input_file_list)
     files_todo = read_list(args.input_file_list)
-else: 
+else:
     files_todo = [input_file]
-    
+
 for input_file in files_todo:
     name = os.path.splitext(os.path.basename(input_file))[0] + args.suffix
 

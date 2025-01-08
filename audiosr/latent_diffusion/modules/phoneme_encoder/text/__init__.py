@@ -1,6 +1,6 @@
 """ from https://github.com/keithito/tacotron """
-from latent_diffusion.modules.phoneme_encoder.text import cleaners
-from latent_diffusion.modules.phoneme_encoder.text.symbols import symbols
+from audiosr.latent_diffusion.modules.phoneme_encoder.text import cleaners
+from audiosr.latent_diffusion.modules.phoneme_encoder.text.symbols import symbols
 
 
 # Mappings from symbol to numeric ID and vice versa:
@@ -30,7 +30,7 @@ def text_to_sequence(text, cleaner_names):
 def cleaned_text_to_sequence(cleaned_text):
     """Converts a string of text to a sequence of IDs corresponding to the symbols in the text.
     Args:
-      text: string to convert to a sequence
+      cleaned_text: string to convert to a sequence
     Returns:
       List of integers corresponding to the symbols in the text
     """

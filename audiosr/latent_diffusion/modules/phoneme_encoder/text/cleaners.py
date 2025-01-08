@@ -16,7 +16,6 @@ import re
 from unidecode import unidecode
 from phonemizer import phonemize
 
-
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r"\s+")
 
@@ -50,10 +49,6 @@ def expand_abbreviations(text):
     for regex, replacement in _abbreviations:
         text = re.sub(regex, replacement, text)
     return text
-
-
-def expand_numbers(text):
-    return normalize_numbers(text)
 
 
 def lowercase(text):

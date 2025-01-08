@@ -1,7 +1,6 @@
 import re
 
 import torch
-from torch.backends import cudnn, mps
 import torchaudio
 import yaml
 
@@ -17,7 +16,8 @@ from utils import (
 
 
 def seed_everything(seed):
-    import random, os
+    import random
+    import os
     import numpy as np
     import torch
 

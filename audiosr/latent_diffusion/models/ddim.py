@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from latent_diffusion.modules.diffusionmodules.util import (
+from audiosr.latent_diffusion.modules.diffusionmodules.util import (
     make_ddim_sampling_parameters,
     make_ddim_timesteps,
     noise_like,
@@ -42,7 +42,7 @@ class DDIMSampler(object):
         setattr(self, name, attr)
 
     def make_schedule(
-        self, ddim_num_steps, ddim_discretize="uniform", ddim_eta=0.0, verbose=True
+            self, ddim_num_steps, ddim_discretize="uniform", ddim_eta=0.0, verbose=True
     ):
         self.ddim_timesteps = make_ddim_timesteps(
             ddim_discr_method=ddim_discretize,
@@ -52,7 +52,7 @@ class DDIMSampler(object):
         )
         alphas_cumprod = self.model.alphas_cumprod
         assert (
-            alphas_cumprod.shape[0] == self.ddpm_num_timesteps
+                alphas_cumprod.shape[0] == self.ddpm_num_timesteps
         ), "alphas have to be defined for each timestep"
         to_torch = lambda x: x.clone().detach().to(torch.float32).to(self.model.device)
 
@@ -103,30 +103,31 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def sample(
-        self,
-        S,
-        batch_size,
-        shape,
-        conditioning=None,
-        callback=None,
-        normals_sequence=None,
-        img_callback=None,
-        quantize_x0=False,
-        eta=0.0,
-        mask=None,
-        x0=None,
-        temperature=1.0,
-        noise_dropout=0.0,
-        score_corrector=None,
-        corrector_kwargs=None,
-        verbose=True,
-        x_T=None,
-        log_every_t=100,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,  # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
-        dynamic_threshold=None,
-        ucg_schedule=None,
-        **kwargs,
+            self,
+            S,
+            batch_size,
+            shape,
+            conditioning=None,
+            callback=None,
+            normals_sequence=None,
+            img_callback=None,
+            quantize_x0=False,
+            eta=0.0,
+            mask=None,
+            x0=None,
+            temperature=1.0,
+            noise_dropout=0.0,
+            score_corrector=None,
+            corrector_kwargs=None,
+            verbose=True,
+            x_T=None,
+            log_every_t=100,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
+            dynamic_threshold=None,
+            ucg_schedule=None,
+            **kwargs,
     ):
         # if conditioning is not None:
         #     if isinstance(conditioning, dict):
@@ -175,26 +176,26 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def ddim_sampling(
-        self,
-        cond,
-        shape,
-        x_T=None,
-        ddim_use_original_steps=False,
-        callback=None,
-        timesteps=None,
-        quantize_denoised=False,
-        mask=None,
-        x0=None,
-        img_callback=None,
-        log_every_t=100,
-        temperature=1.0,
-        noise_dropout=0.0,
-        score_corrector=None,
-        corrector_kwargs=None,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        dynamic_threshold=None,
-        ucg_schedule=None,
+            self,
+            cond,
+            shape,
+            x_T=None,
+            ddim_use_original_steps=False,
+            callback=None,
+            timesteps=None,
+            quantize_denoised=False,
+            mask=None,
+            x0=None,
+            img_callback=None,
+            log_every_t=100,
+            temperature=1.0,
+            noise_dropout=0.0,
+            score_corrector=None,
+            corrector_kwargs=None,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            dynamic_threshold=None,
+            ucg_schedule=None,
     ):
         device = self.model.betas.device
         b = shape[0]
@@ -211,11 +212,11 @@ class DDIMSampler(object):
             )
         elif timesteps is not None and not ddim_use_original_steps:
             subset_end = (
-                int(
-                    min(timesteps / self.ddim_timesteps.shape[0], 1)
-                    * self.ddim_timesteps.shape[0]
-                )
-                - 1
+                    int(
+                        min(timesteps / self.ddim_timesteps.shape[0], 1)
+                        * self.ddim_timesteps.shape[0]
+                    )
+                    - 1
             )
             timesteps = self.ddim_timesteps[:subset_end]
 
@@ -274,21 +275,21 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def p_sample_ddim(
-        self,
-        x,
-        c,
-        t,
-        index,
-        repeat_noise=False,
-        use_original_steps=False,
-        quantize_denoised=False,
-        temperature=1.0,
-        noise_dropout=0.0,
-        score_corrector=None,
-        corrector_kwargs=None,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        dynamic_threshold=None,
+            self,
+            x,
+            c,
+            t,
+            index,
+            repeat_noise=False,
+            use_original_steps=False,
+            quantize_denoised=False,
+            temperature=1.0,
+            noise_dropout=0.0,
+            score_corrector=None,
+            corrector_kwargs=None,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            dynamic_threshold=None,
     ):
         b, *_, device = *x.shape, x.device
 
@@ -308,7 +309,7 @@ class DDIMSampler(object):
             )
 
             model_output = model_uncond + unconditional_guidance_scale * (
-                model_t - model_uncond
+                    model_t - model_uncond
             )
 
         if self.model.parameterization == "v":
@@ -359,7 +360,7 @@ class DDIMSampler(object):
             raise NotImplementedError()
 
         # direction pointing to x_t
-        dir_xt = (1.0 - a_prev - sigma_t**2).sqrt() * e_t
+        dir_xt = (1.0 - a_prev - sigma_t ** 2).sqrt() * e_t
         noise = sigma_t * noise_like(x.shape, device, repeat_noise) * temperature
         if noise_dropout > 0.0:
             noise = torch.nn.functional.dropout(noise, p=noise_dropout)
@@ -368,15 +369,15 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def encode(
-        self,
-        x0,
-        c,
-        t_enc,
-        use_original_steps=False,
-        return_intermediates=None,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        callback=None,
+            self,
+            x0,
+            c,
+            t_enc,
+            use_original_steps=False,
+            return_intermediates=None,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            callback=None,
     ):
         num_reference_steps = (
             self.ddpm_num_timesteps
@@ -414,20 +415,20 @@ class DDIMSampler(object):
                     2,
                 )
                 noise_pred = e_t_uncond + unconditional_guidance_scale * (
-                    noise_pred - e_t_uncond
+                        noise_pred - e_t_uncond
                 )
 
             xt_weighted = (alphas_next[i] / alphas[i]).sqrt() * x_next
             weighted_noise_pred = (
-                alphas_next[i].sqrt()
-                * ((1 / alphas_next[i] - 1).sqrt() - (1 / alphas[i] - 1).sqrt())
-                * noise_pred
+                    alphas_next[i].sqrt()
+                    * ((1 / alphas_next[i] - 1).sqrt() - (1 / alphas[i] - 1).sqrt())
+                    * noise_pred
             )
             x_next = xt_weighted + weighted_noise_pred
             if (
-                return_intermediates
-                and i % (num_steps // return_intermediates) == 0
-                and i < num_steps - 1
+                    return_intermediates
+                    and i % (num_steps // return_intermediates) == 0
+                    and i < num_steps - 1
             ):
                 intermediates.append(x_next)
                 inter_steps.append(i)
@@ -456,20 +457,20 @@ class DDIMSampler(object):
         if noise is None:
             noise = torch.randn_like(x0)
         return (
-            extract_into_tensor(sqrt_alphas_cumprod, t, x0.shape) * x0
-            + extract_into_tensor(sqrt_one_minus_alphas_cumprod, t, x0.shape) * noise
+                extract_into_tensor(sqrt_alphas_cumprod, t, x0.shape) * x0
+                + extract_into_tensor(sqrt_one_minus_alphas_cumprod, t, x0.shape) * noise
         )
 
     @torch.no_grad()
     def decode(
-        self,
-        x_latent,
-        cond,
-        t_start,
-        unconditional_guidance_scale=1.0,
-        unconditional_conditioning=None,
-        use_original_steps=False,
-        callback=None,
+            self,
+            x_latent,
+            cond,
+            t_start,
+            unconditional_guidance_scale=1.0,
+            unconditional_conditioning=None,
+            use_original_steps=False,
+            callback=None,
     ):
         timesteps = (
             np.arange(self.ddpm_num_timesteps)

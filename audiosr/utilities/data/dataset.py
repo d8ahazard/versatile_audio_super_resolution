@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-import utilities.audio as Audio
-from utilities.tools import load_json
+import audiosr.utilities.audio as Audio
+from audiosr.utilities.tools import load_json
 
 import random
 from torch.utils.data import Dataset
@@ -14,24 +14,38 @@ import torchaudio
 
 class AudioDataset(Dataset):
     def __init__(
-        self,
-        config=None,
-        split="train",
-        waveform_only=False,
-        add_ons=[],
-        dataset_json_path=None,  #
+            self,
+            config=None,
+            split="train",
+            waveform_only=False,
+            add_ons=None,
+            dataset_json_path=None
     ):
         """
         Dataset that manages audio recordings
-        :param audio_conf: Dictionary containing the audio loading and preprocessing settings
-        :param dataset_json_file
+        :param config: The configuration file
+        :param split: The dataset split
+        :param waveform_only: If True, only return waveform data
+        :param add_ons: Additional functions that will be called after the main feature extraction
+        :param dataset_json_path: The path to the dataset json file
         """
+        if add_ons is None:
+            add_ons = []
         self.config = config
         self.split = split
         self.pad_wav_start_sample = 0  # If none, random choose
-        self.trim_wav = False
+        self.do_trim_wav = False
         self.waveform_only = waveform_only
         self.add_ons = [eval(x) for x in add_ons]
+        self.melbins = 64
+        self.freqm = 0
+        self.timem = 0
+        self.sampling_rate = 16000
+        self.hopsize = 160
+        self.duration = 1.0
+        self.target_length = 16000
+        self.mixup = 0.0
+        self.STFT = None
         print("Add-ons:", self.add_ons)
 
         self.build_setting_parameters()
@@ -46,8 +60,8 @@ class AudioDataset(Dataset):
             self.metadata_root = load_json(self.config["metadata_root"])
             self.dataset_name = self.config["data"][self.split]
             assert split in self.config["data"].keys(), (
-                "The dataset split %s you specified is not present in the config. You can choose from %s"
-                % (split, self.config["data"].keys())
+                    "The dataset split %s you specified is not present in the config. You can choose from %s"
+                    % (split, self.config["data"].keys())
             )
             self.build_dataset()
             self.build_id_to_label()
@@ -96,7 +110,8 @@ class AudioDataset(Dataset):
 
         return data
 
-    def text_to_filename(self, text):
+    @staticmethod
+    def text_to_filename(text):
         return text.replace(" ", "_").replace("'", "_").replace('"', "_")
 
     def get_dataset_root_path(self, dataset):
@@ -126,6 +141,14 @@ class AudioDataset(Dataset):
             index = random.randint(0, len(self.data) - 1)
 
         # Read wave file and extract feature
+        stft = 0
+        log_mel_spec = 0
+        waveform = 0
+        random_start = 0
+        label_indices = 0
+        mix_datum = None
+        datum = None
+
         while True:
             try:
                 label_indices = np.zeros(self.label_num, dtype=np.float32)
@@ -152,10 +175,7 @@ class AudioDataset(Dataset):
                 )
                 continue
 
-        # The filename of the wav file
         fname = datum["wav"]
-        # t_step = log_mel_spec.size(0)
-        # waveform = torch.FloatTensor(waveform[..., : int(self.hopsize * t_step)])
         waveform = torch.FloatTensor(waveform)
 
         return (
@@ -217,8 +237,8 @@ class AudioDataset(Dataset):
         for i in range(len(metadata["data"])):
             assert "wav" in metadata["data"][i].keys(), metadata["data"][i]
             assert metadata["data"][i]["wav"][0] != "/", (
-                "The dataset metadata should only contain relative path to the audio file: "
-                + str(metadata["data"][i]["wav"])
+                    "The dataset metadata should only contain relative path to the audio file: "
+                    + str(metadata["data"][i]["wav"])
             )
             metadata["data"][i]["wav"] = os.path.join(
                 root_path, metadata["data"][i]["wav"]
@@ -290,21 +310,8 @@ class AudioDataset(Dataset):
         # waveform = librosa.resample(waveform, sr, self.sampling_rate)
         return waveform
 
-        # if sr == 16000:
-        #     return waveform
-        # if sr == 32000 and self.sampling_rate == 16000:
-        #     waveform = waveform[::2]
-        #     return waveform
-        # if sr == 48000 and self.sampling_rate == 16000:
-        #     waveform = waveform[::3]
-        #     return waveform
-        # else:
-        #     raise ValueError(
-        #         "We currently only support 16k audio generation. You need to resample you audio file to 16k, 32k, or 48k: %s, %s"
-        #         % (sr, self.sampling_rate)
-        #     )
-
-    def normalize_wav(self, waveform):
+    @staticmethod
+    def normalize_wav(waveform):
         waveform = waveform - np.mean(waveform)
         waveform = waveform / (np.max(np.abs(waveform)) + 1e-8)
         return waveform * 0.5  # Manually limit the maximum amplitude into 0.5
@@ -318,7 +325,7 @@ class AudioDataset(Dataset):
             return waveform, 0
 
         random_start = int(self.random_uniform(0, waveform_length - target_length))
-        return waveform[:, random_start : random_start + target_length], random_start
+        return waveform[:, random_start: random_start + target_length], random_start
 
     def pad_wav(self, waveform, target_length):
         waveform_length = waveform.shape[-1]
@@ -334,10 +341,11 @@ class AudioDataset(Dataset):
         else:
             rand_start = 0
 
-        temp_wav[:, rand_start : rand_start + waveform_length] = waveform
+        temp_wav[:, rand_start: rand_start + waveform_length] = waveform
         return temp_wav
 
-    def trim_wav(self, waveform):
+    @staticmethod
+    def trim_wav(waveform):
         if np.max(np.abs(waveform)) < 0.0001:
             return waveform
 
@@ -346,7 +354,7 @@ class AudioDataset(Dataset):
             waveform_length = waveform.shape[0]
             start = 0
             while start + chunk_size < waveform_length:
-                if np.max(np.abs(waveform[start : start + chunk_size])) < threshold:
+                if np.max(np.abs(waveform[start: start + chunk_size])) < threshold:
                     start += chunk_size
                 else:
                     break
@@ -357,7 +365,7 @@ class AudioDataset(Dataset):
             waveform_length = waveform.shape[0]
             start = waveform_length
             while start - chunk_size > 0:
-                if np.max(np.abs(waveform[start - chunk_size : start])) < threshold:
+                if np.max(np.abs(waveform[start - chunk_size: start])) < threshold:
                     start -= chunk_size
                 else:
                     break
@@ -386,7 +394,7 @@ class AudioDataset(Dataset):
 
         waveform = self.normalize_wav(waveform)
 
-        if self.trim_wav:
+        if self.do_trim_wav:
             waveform = self.trim_wav(waveform)
 
         waveform = waveform[None, ...]
@@ -466,19 +474,21 @@ class AudioDataset(Dataset):
             m = torch.nn.ZeroPad2d((0, 0, 0, p))
             log_mel_spec = m(log_mel_spec)
         elif p < 0:
-            log_mel_spec = log_mel_spec[0 : self.target_length, :]
+            log_mel_spec = log_mel_spec[0: self.target_length, :]
 
         if log_mel_spec.size(-1) % 2 != 0:
             log_mel_spec = log_mel_spec[..., :-1]
 
         return log_mel_spec
 
-    def _read_datum_caption(self, datum):
+    @staticmethod
+    def _read_datum_caption(datum):
         caption_keys = [x for x in datum.keys() if ("caption" in x)]
         random_index = torch.randint(0, len(caption_keys), (1,))[0].item()
         return datum[caption_keys[random_index]]
 
-    def _is_contain_caption(self, datum):
+    @staticmethod
+    def _is_contain_caption(datum):
         caption_keys = [x for x in datum.keys() if ("caption" in x)]
         return len(caption_keys) > 0
 
@@ -499,7 +509,8 @@ class AudioDataset(Dataset):
         else:
             return ""  # TODO, if both label and caption are not provided, return empty string
 
-    def random_uniform(self, start, end):
+    @staticmethod
+    def random_uniform(start, end):
         val = torch.rand(1).item()
         return start + (end - start) * val
 
@@ -507,12 +518,12 @@ class AudioDataset(Dataset):
         bs, freq, tsteps = log_mel_spec.size()
         mask_len = int(self.random_uniform(freqm // 8, freqm))
         mask_start = int(self.random_uniform(start=0, end=freq - mask_len))
-        log_mel_spec[:, mask_start : mask_start + mask_len, :] *= 0.0
+        log_mel_spec[:, mask_start: mask_start + mask_len, :] *= 0.0
         return log_mel_spec
 
     def time_masking(self, log_mel_spec, timem):
         bs, freq, tsteps = log_mel_spec.size()
         mask_len = int(self.random_uniform(timem // 8, timem))
         mask_start = int(self.random_uniform(start=0, end=tsteps - mask_len))
-        log_mel_spec[:, :, mask_start : mask_start + mask_len] *= 0.0
+        log_mel_spec[:, :, mask_start: mask_start + mask_len] *= 0.0
         return log_mel_spec
