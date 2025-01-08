@@ -3,7 +3,7 @@ import numpy as np
 from scipy.io.wavfile import write
 import torchaudio
 
-from audiosr.utilities.audio.audio_processing import griffin_lim
+from utilities.audio.audio_processing import griffin_lim
 
 
 def pad_wav(waveform, segment_length):

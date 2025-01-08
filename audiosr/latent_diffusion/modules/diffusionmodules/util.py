@@ -14,7 +14,7 @@ import torch.nn as nn
 import numpy as np
 from einops import repeat
 
-from audiosr.latent_diffusion.util import instantiate_from_config
+from latent_diffusion.util import instantiate_from_config
 
 
 def make_beta_schedule(

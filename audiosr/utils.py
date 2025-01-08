@@ -19,7 +19,7 @@ from librosa.filters import mel as librosa_mel_fn
 from torch.nn.functional import pad
 from torchaudio import load
 
-from audiosr.lowpass import lowpass
+from lowpass import lowpass
 
 # from torchaudio.backend.soundfile_backend import load
 

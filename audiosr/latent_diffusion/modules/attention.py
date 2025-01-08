@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn, einsum
 from einops import rearrange, repeat
 
-from audiosr.latent_diffusion.modules.diffusionmodules.util import checkpoint
+from latent_diffusion.modules.diffusionmodules.util import checkpoint
 
 
 def exists(val):

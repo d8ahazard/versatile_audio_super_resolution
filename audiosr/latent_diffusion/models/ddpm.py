@@ -9,27 +9,27 @@ from contextlib import contextmanager
 from functools import partial
 from tqdm import tqdm
 from torchvision.utils import make_grid
-from audiosr.latent_diffusion.modules.encoders.modules import *
+from latent_diffusion.modules.encoders.modules import *
 
-from audiosr.latent_diffusion.util import (
+from latent_diffusion.util import (
     exists,
     default,
     count_params,
     instantiate_from_config,
 )
-from audiosr.latent_diffusion.modules.ema import LitEma
-from audiosr.latent_diffusion.modules.distributions.distributions import (
+from latent_diffusion.modules.ema import LitEma
+from latent_diffusion.modules.distributions.distributions import (
     DiagonalGaussianDistribution,
 )
 
-from audiosr.latent_diffusion.modules.diffusionmodules.util import (
+from latent_diffusion.modules.diffusionmodules.util import (
     make_beta_schedule,
     extract_into_tensor,
     noise_like,
 )
 
-from audiosr.latent_diffusion.models.ddim import DDIMSampler
-from audiosr.latent_diffusion.models.plms import PLMSSampler
+from latent_diffusion.models.ddim import DDIMSampler
+from latent_diffusion.models.plms import PLMSSampler
 import soundfile as sf
 import os
 

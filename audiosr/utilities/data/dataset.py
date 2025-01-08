@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 import audiosr.utilities.audio as Audio
-from audiosr.utilities.tools import load_json
+from utilities.tools import load_json
 
 import random
 from torch.utils.data import Dataset

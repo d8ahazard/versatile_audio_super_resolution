@@ -16,8 +16,8 @@ from pathlib import Path
 
 # import wget
 
-from audiosr.clap.open_clip.utils import get_tar_path_from_dataset_name
-from audiosr.clap.open_clip.utils import load_class_label
+from clap.open_clip.utils import get_tar_path_from_dataset_name
+from clap.open_clip.utils import load_class_label
 
 try:
     import horovod.torch as hvd
@@ -29,7 +29,7 @@ try:
 except ImportError:
     torchaudio = None
 
-from audiosr.clap.open_clip import tokenize
+from clap.open_clip import tokenize
 
 
 def tokenizer(text):

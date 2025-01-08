@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from audiosr.latent_diffusion.modules.diffusionmodules.util import (
+from latent_diffusion.modules.diffusionmodules.util import (
     make_ddim_sampling_parameters,
     make_ddim_timesteps,
     noise_like,

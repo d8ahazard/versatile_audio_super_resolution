@@ -6,8 +6,8 @@ import numpy as np
 from diffusers.models.autoencoders.vae import DiagonalGaussianDistribution
 from einops import rearrange
 
-from audiosr.latent_diffusion.util import instantiate_from_config
-from audiosr.latent_diffusion.modules.attention import LinearAttention
+from latent_diffusion.util import instantiate_from_config
+from latent_diffusion.modules.attention import LinearAttention
 
 
 def get_timestep_embedding(timesteps, embedding_dim):
