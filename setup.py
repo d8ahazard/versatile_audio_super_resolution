@@ -1,14 +1,15 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # python3 setup.py sdist bdist_wheel
 """
 @File    :   setup.py
-@Contact :   haoheliu@gmail.com
+@Contact :   d8ahazard@gmail.com
 @License :   (C)Copyright 2020-2100
 
 @Modify Time      @Author    @Version    @Desciption
 ------------      -------    --------    -----------
-9/6/21 5:16 PM   Haohe Liu      1.0         None
+1/8/25 1:00 PM   d8ahazard   1.1         Updates!
+9/6/21 5:16 PM   Haohe Liu(haoheliu@gmail.com)      1.0         None
 """
 
 # !/usr/bin/env python
@@ -107,18 +108,18 @@ class UploadCommand(Command):
 
     def run(self):
         try:
-            self.status("Removing previous builds…")
+            self.status("Removing previous builds")
             rmtree(os.path.join(here, "dist"))
         except OSError:
             pass
 
-        self.status("Building Source and Wheel (universal) distribution…")
+        self.status("Building Source and Wheel (universal) distribution")
         os.system("{0} setup.py sdist bdist_wheel --universal".format(sys.executable))
 
-        self.status("Uploading the package to PyPI via Twine…")
+        self.status("Uploading the package to PyPI via Twine")
         os.system("twine upload dist/*")
 
-        self.status("Pushing git tags…")
+        self.status("Pushing git tags")
         os.system("git tag v{0}".format(about["__version__"]))
         os.system("git push --tags")
 
@@ -162,3 +163,4 @@ setup(
     },
     scripts=["bin/audiosr.cmd", "bin/audiosr"],
 )
+
