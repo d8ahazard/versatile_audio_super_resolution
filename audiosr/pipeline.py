@@ -4,9 +4,9 @@ import torch
 import torchaudio
 import yaml
 
-import latent_diffusion.modules.phoneme_encoder.text as text
-from latent_diffusion.models.ddpm import LatentDiffusion
-from utils import (
+import audiosr.latent_diffusion.modules.phoneme_encoder.text as text
+from audiosr.latent_diffusion.models.ddpm import LatentDiffusion
+from audiosr.utils import (
     default_audioldm_config,
     download_checkpoint,
     read_audio_file,
