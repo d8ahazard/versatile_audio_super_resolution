@@ -52,7 +52,6 @@ class DDPM(nn.Module):
     cond_ids = None
     shorten_cond_schedule = False
     cond_schedule = None
-    first_stage_model = None
     cond_stage_model_metatdata = None
 
     def __init__(
