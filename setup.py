@@ -14,7 +14,7 @@ URL = "https://github.com/haoheliu/audiosr"
 EMAIL = "haoheliu@gmail.com"
 AUTHOR = "Haohe Liu"
 REQUIRES_PYTHON = ">=3.9.0"
-VERSION = "0.0.8"
+VERSION = "0.0.9"
 
 # Required packages for this module
 REQUIRED = [
@@ -33,12 +33,12 @@ REQUIRED = [
     "scipy",
     "soundfile",
     "timm",
-    "torch>=2.4.0",
-    "torchaudio>=2.4.0",
-    "torchlibrosa>=0.0.9",
-    "torchvision==0.19.0",
+    "torch>=2.6.0",
+    "torchaudio>=2.6.0",
+    "torchlibrosa>=0.1.0",
+    "torchvision>=0.21.0",
     "tqdm",
-    "transformers>=4.30.2",
+    "transformers>=4.51.3",
     "unidecode",
 ]
 
