@@ -29,12 +29,12 @@ dependencies = [
     "gradio",
     "huggingface_hub",
     "librosa",
-    "pandas>=2.2.0",
+    "pandas",
     "phonemizer",
     "progressbar",
     "pyloudnorm",
     "pyyaml",
-    "scipy>=1.15.0",
+    "scipy",
     "soundfile",
     "timm",
     "torch>=2.4.0",
@@ -44,7 +44,7 @@ dependencies = [
     "tqdm",
     "transformers>=4.51.3",
     "unidecode",
-    "numpy>=1.24.2"
+    "numpy"
 ]
 
 [project.urls]
