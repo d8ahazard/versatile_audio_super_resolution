@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audiosr"
+version = "0.0.9"
+authors = [
+  { name="Haohe Liu", email="haoheliu@gmail.com" }
+]
+description = "This package is written for text-to-audio/music generation."
+readme = "README.md"
+requires-python = ">=3.9.0"
+license = {text = "MIT"}
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "chardet",
+    "cog",
+    "einops",
+    "ftfy",
+    "gradio",
+    "huggingface_hub",
+    "librosa",
+    "pandas>=2.2.0",
+    "phonemizer",
+    "progressbar",
+    "pyloudnorm",
+    "pyyaml",
+    "scipy>=1.15.0",
+    "soundfile",
+    "timm",
+    "torch>=2.4.0",
+    "torchaudio>=2.4.0",
+    "torchlibrosa>=0.1.0",
+    "torchvision>=0.19.0",
+    "tqdm",
+    "transformers>=4.51.3",
+    "unidecode",
+    "numpy>=1.24.2"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/haoheliu/audiosr"
+"Bug Tracker" = "https://github.com/haoheliu/audiosr/issues"
+
+[project.scripts]
+audiosr = "audiosr:main" 
